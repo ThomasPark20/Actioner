@@ -31,16 +31,17 @@ You MUST stay responsive to new messages while research runs. Research happens i
 ### How to dispatch research:
 1. **Use the exact term the user gives you.** If they say "teampcp", research "teampcp" — do NOT substitute "TeamTNT" or anything else. Search first, ask second.
 2. Send an immediate acknowledgment via `send_message`: "On it — spinning up a research thread for [topic]."
-3. Create a research thread by writing an IPC task:
-   ```
-   Write to /workspace/ipc/tasks/research_<timestamp>.json:
+3. Create a research thread by writing an IPC task. **CRITICAL: `parentJid` MUST be the actual channel JID** — get it from the `$NANOCLAW_CHAT_JID` environment variable (e.g. `dc:1234567890123456`). NEVER use "main" or any other placeholder.
+   ```bash
+   cat > /workspace/ipc/tasks/research_$(date +%s).json << EOF
    {
      "type": "start_research_thread",
-     "parentJid": "<the chat JID from this conversation>",
+     "parentJid": "$NANOCLAW_CHAT_JID",
      "threadName": "Research: [Topic Name]",
      "researchTopic": "[exact topic]",
-     "prompt": "Research [exact topic]. Follow primary sources. Produce a full topic summary with detection rules. Save to ../global/summaries/<date>-<topic-slug>.md. When done, send a message with the summary attached as a file."
+     "prompt": "Research [exact topic]. Follow primary sources. Produce a full topic summary with detection rules. Save to ../global/summaries/$(date +%Y-%m-%d)-<topic-slug>.md. When done, send a message with the summary attached as a file."
    }
+   EOF
    ```
 4. After writing the task file, you are DONE. Wrap any remaining thoughts in `<internal>` tags. Do NOT block waiting for research results.
 5. A Discord thread is created automatically. A research agent starts working in that thread. The user can follow up in the thread with questions, corrections, or "/btw" context — it all goes to the research agent.
