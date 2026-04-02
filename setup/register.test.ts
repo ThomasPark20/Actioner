@@ -43,7 +43,7 @@ describe('parameterized SQL registration', () => {
       '123@g.us',
       'Test Group',
       'test-group',
-      '@Andy',
+      '@AEGIS',
       '2024-01-01T00:00:00.000Z',
       1,
     );
@@ -61,7 +61,7 @@ describe('parameterized SQL registration', () => {
     expect(row.jid).toBe('123@g.us');
     expect(row.name).toBe('Test Group');
     expect(row.folder).toBe('test-group');
-    expect(row.trigger_pattern).toBe('@Andy');
+    expect(row.trigger_pattern).toBe('@AEGIS');
     expect(row.requires_trigger).toBe(1);
   });
 
@@ -76,7 +76,7 @@ describe('parameterized SQL registration', () => {
       '456@g.us',
       name,
       'obriens-group',
-      '@Andy',
+      '@AEGIS',
       '2024-01-01T00:00:00.000Z',
       0,
     );
@@ -97,7 +97,7 @@ describe('parameterized SQL registration', () => {
       `INSERT OR REPLACE INTO registered_groups
        (jid, name, folder, trigger_pattern, added_at, container_config, requires_trigger)
        VALUES (?, ?, ?, ?, ?, NULL, ?)`,
-    ).run(maliciousJid, 'Evil', 'evil', '@Andy', '2024-01-01T00:00:00.000Z', 1);
+    ).run(maliciousJid, 'Evil', 'evil', '@AEGIS', '2024-01-01T00:00:00.000Z', 1);
 
     // Table should still exist and have the row
     const count = db
@@ -122,7 +122,7 @@ describe('parameterized SQL registration', () => {
       '789@s.whatsapp.net',
       'Personal',
       'main',
-      '@Andy',
+      '@AEGIS',
       '2024-01-01T00:00:00.000Z',
       0,
     );
@@ -143,7 +143,7 @@ describe('parameterized SQL registration', () => {
       '789@s.whatsapp.net',
       'Personal',
       'whatsapp_main',
-      '@Andy',
+      '@AEGIS',
       '2024-01-01T00:00:00.000Z',
       0,
       1,
@@ -165,7 +165,7 @@ describe('parameterized SQL registration', () => {
       '123@g.us',
       'Some Group',
       'whatsapp_some-group',
-      '@Andy',
+      '@AEGIS',
       '2024-01-01T00:00:00.000Z',
       1,
     );
@@ -188,7 +188,7 @@ describe('parameterized SQL registration', () => {
       '123@g.us',
       'Original',
       'main',
-      '@Andy',
+      '@AEGIS',
       '2024-01-01T00:00:00.000Z',
       1,
     );
@@ -217,27 +217,27 @@ describe('parameterized SQL registration', () => {
 
 describe('file templating', () => {
   it('replaces assistant name in CLAUDE.md content', () => {
-    let content = '# Andy\n\nYou are Andy, a personal assistant.';
+    let content = '# AEGIS\n\nYou are AEGIS, a personal assistant.';
 
-    content = content.replace(/^# Andy$/m, '# Nova');
-    content = content.replace(/You are Andy/g, 'You are Nova');
+    content = content.replace(/^# AEGIS$/m, '# Nova');
+    content = content.replace(/You are AEGIS/g, 'You are Nova');
 
     expect(content).toBe('# Nova\n\nYou are Nova, a personal assistant.');
   });
 
   it('handles names with special regex characters', () => {
-    let content = '# Andy\n\nYou are Andy.';
+    let content = '# AEGIS\n\nYou are AEGIS.';
 
     const newName = 'C.L.A.U.D.E';
-    content = content.replace(/^# Andy$/m, `# ${newName}`);
-    content = content.replace(/You are Andy/g, `You are ${newName}`);
+    content = content.replace(/^# AEGIS$/m, `# ${newName}`);
+    content = content.replace(/You are AEGIS/g, `You are ${newName}`);
 
     expect(content).toContain('# C.L.A.U.D.E');
     expect(content).toContain('You are C.L.A.U.D.E.');
   });
 
   it('updates .env ASSISTANT_NAME line', () => {
-    let envContent = 'SOME_KEY=value\nASSISTANT_NAME="Andy"\nOTHER=test';
+    let envContent = 'SOME_KEY=value\nASSISTANT_NAME="AEGIS"\nOTHER=test';
 
     envContent = envContent.replace(
       /^ASSISTANT_NAME=.*$/m,
@@ -267,7 +267,7 @@ describe('CLAUDE.md template copy', () => {
   function simulateRegister(
     folder: string,
     isMain: boolean,
-    assistantName = 'Andy',
+    assistantName = 'AEGIS',
   ): void {
     const folderDir = path.join(groupsDir, folder);
     fs.mkdirSync(path.join(folderDir, 'logs'), { recursive: true });
@@ -284,7 +284,7 @@ describe('CLAUDE.md template copy', () => {
     }
 
     // Name update across all groups (register.ts lines 140-165)
-    if (assistantName !== 'Andy') {
+    if (assistantName !== 'AEGIS') {
       const mdFiles = fs
         .readdirSync(groupsDir)
         .map((d) => path.join(groupsDir, d, 'CLAUDE.md'))
@@ -292,9 +292,9 @@ describe('CLAUDE.md template copy', () => {
 
       for (const mdFile of mdFiles) {
         let content = fs.readFileSync(mdFile, 'utf-8');
-        content = content.replace(/^# Andy$/m, `# ${assistantName}`);
+        content = content.replace(/^# AEGIS$/m, `# ${assistantName}`);
         content = content.replace(
-          /You are Andy/g,
+          /You are AEGIS/g,
           `You are ${assistantName}`,
         );
         fs.writeFileSync(mdFile, content);
@@ -316,11 +316,11 @@ describe('CLAUDE.md template copy', () => {
     fs.mkdirSync(path.join(groupsDir, 'global'), { recursive: true });
     fs.writeFileSync(
       path.join(groupsDir, 'main', 'CLAUDE.md'),
-      '# Andy\n\nYou are Andy, a personal assistant.\n\n## Admin Context\n\nThis is the **main channel**.',
+      '# AEGIS\n\nYou are AEGIS, a personal assistant.\n\n## Admin Context\n\nThis is the **main channel**.',
     );
     fs.writeFileSync(
       path.join(groupsDir, 'global', 'CLAUDE.md'),
-      '# Andy\n\nYou are Andy, a personal assistant.',
+      '# AEGIS\n\nYou are AEGIS, a personal assistant.',
     );
   });
 
@@ -332,7 +332,7 @@ describe('CLAUDE.md template copy', () => {
     simulateRegister('telegram_dev-team', false);
 
     const content = readGroupMd('telegram_dev-team');
-    expect(content).toContain('You are Andy');
+    expect(content).toContain('You are AEGIS');
     expect(content).not.toContain('Admin Context');
   });
 
@@ -356,7 +356,7 @@ describe('CLAUDE.md template copy', () => {
     ]) {
       const content = readGroupMd(folder);
       expect(content).toContain('Admin Context');
-      expect(content).toContain('You are Andy');
+      expect(content).toContain('You are AEGIS');
     }
   });
 
@@ -373,7 +373,7 @@ describe('CLAUDE.md template copy', () => {
       'discord_general',
     ]) {
       const content = readGroupMd(folder);
-      expect(content).toContain('You are Andy');
+      expect(content).toContain('You are AEGIS');
       expect(content).not.toContain('Admin Context');
     }
   });
@@ -397,7 +397,7 @@ describe('CLAUDE.md template copy', () => {
       const content = readGroupMd(folder);
       expect(content).toContain('# Luna');
       expect(content).toContain('You are Luna');
-      expect(content).not.toContain('Andy');
+      expect(content).not.toContain('AEGIS');
     }
   });
 
