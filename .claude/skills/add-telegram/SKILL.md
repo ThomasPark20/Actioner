@@ -65,6 +65,61 @@ npx vitest run src/channels/telegram.test.ts
 
 All tests must pass (including the new Telegram tests) and build must be clean before proceeding.
 
+## Phase 2.5: Apply AEGIS Enhancements
+
+After the Telegram merge succeeds, apply these enhancements. **If /add-discord was already run**, some of these may already be applied — check before duplicating.
+
+### Enhancement 1: sendFile on Channel interface (if not already applied)
+
+Check if `sendFile` already exists on the Channel interface in `src/types.ts`. If not, add it:
+
+```typescript
+sendFile?(jid: string, filePath: string, caption?: string): Promise<void>;
+```
+
+### Enhancement 2: sendFile on Telegram channel
+
+In `src/channels/telegram.ts`, add a `sendFile` method to the TelegramChannel class using grammy's `sendDocument`:
+
+```typescript
+async sendFile(jid: string, filePath: string, caption?: string): Promise<void> {
+  const chatId = jid.replace(/^tg:/, '');
+  const { InputFile } = await import('grammy');
+  await this.bot.api.sendDocument(chatId, new InputFile(filePath), {
+    caption: caption || undefined,
+  });
+}
+```
+
+### Enhancement 3: send_file MCP tool (if not already applied)
+
+Check if `send_file` tool already exists in `container/agent-runner/src/ipc-mcp-stdio.ts`. If not, add it after the `send_message` tool (see /add-discord Phase 2.5 Enhancement 3 for exact code).
+
+### Enhancement 4: File IPC handling (if not already applied)
+
+Check if `type === 'file'` handling exists in `src/ipc.ts`. If not, add the file IPC handler and `sendFile` to `IpcDeps` (see /add-discord Phase 2.5 Enhancement 4 for exact code).
+
+### Enhancement 5: Wire sendFile into IPC deps (if not already applied)
+
+Check if `sendFile` is already in the IPC deps in `src/index.ts`. If not, add it (see /add-discord Phase 2.5 Enhancement 5 for exact code).
+
+### Enhancement 6: Dedup fix (if not already applied)
+
+Check if `allPending.length === 0` guard exists in `src/index.ts`. If not, add it (see /add-discord Phase 2.5 Enhancement 6).
+
+### Enhancement 7: Cache invalidation fix (if not already applied)
+
+Check if mtime comparison loop exists in `src/container-runner.ts`. If not, add it (see /add-discord Phase 2.5 Enhancement 7).
+
+### Validate all enhancements
+
+```bash
+npx tsc --noEmit
+npm run build
+```
+
+Both must pass cleanly.
+
 ## Phase 3: Setup
 
 ### Create Telegram Bot (if needed)
@@ -147,7 +202,34 @@ For additional chats (trigger-only):
 npx tsx setup/index.ts --step register -- --jid "tg:<chat-id>" --name "<chat-name>" --folder "telegram_<group-name>" --trigger "@${ASSISTANT_NAME}" --channel telegram
 ```
 
-## Phase 5: Verify
+## Phase 5: Seed Scheduled Tasks
+
+After successful registration, seed the daily briefing and critical polling tasks if not already seeded (check with `sqlite3 store/messages.db "SELECT * FROM scheduled_tasks"`).
+
+### Daily Briefing (8 AM ET)
+
+```
+mcp__nanoclaw__schedule_task({
+  prompt: "Run the daily threat intelligence briefing. Steps: 1) Read feeds.yaml for RSS feed URLs. 2) Fetch each feed and filter for items from the last 24 hours. 3) Deduplicate by title similarity. 4) For each unique item, research the topic using /research skill. 5) Generate detection rules using /rule-gen skill. 6) Validate all rules (sigma check, yarac, snort -T). 7) Compile everything into a single briefing report as a markdown file. 8) Send the report via send_file. If no new actionable threat intelligence today, send: 'No new actionable threat intelligence today.'",
+  schedule_type: "cron",
+  schedule_value: "0 8 * * *",
+  timezone: "America/New_York"
+})
+```
+
+### Critical Issue Polling (Every 2 Hours)
+
+```
+mcp__nanoclaw__schedule_task({
+  prompt: "Check for critical security issues that need immediate attention. Review the script output for any headlines flagged as critical.",
+  schedule_type: "cron",
+  schedule_value: "0 */2 * * *",
+  timezone: "America/New_York",
+  script: "node --input-type=module -e \"\nimport https from 'https';\nconst feeds = ['https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json'];\nlet critical = [];\nfor (const url of feeds) {\n  try {\n    const data = await new Promise((resolve, reject) => {\n      https.get(url, {headers: {'User-Agent': 'AEGIS/1.0'}}, (res) => {\n        let body = '';\n        res.on('data', (c) => body += c);\n        res.on('end', () => resolve(body));\n        res.on('error', reject);\n      }).on('error', reject);\n    });\n    const parsed = JSON.parse(data);\n    const vulns = (parsed.vulnerabilities || []).slice(0, 5);\n    for (const v of vulns) {\n      const kev = v.knownRansomwareCampaignUse === 'Known';\n      if (kev) critical.push(v.vulnerabilityName + ' - ' + v.shortDescription);\n    }\n  } catch(e) { /* skip feed errors */ }\n}\nconsole.log(JSON.stringify({wakeAgent: critical.length > 0, data: {headlines: critical}}));\n\""
+})
+```
+
+## Phase 6: Verify
 
 ### Test the connection
 
