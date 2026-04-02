@@ -5,14 +5,13 @@ export default defineConfig({
   description: 'Autonomous CTI Research & Detection Platform',
   base: '/Aegis/',
   ignoreDeadLinks: true,
+  appearance: 'dark',
   head: [
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/Aegis/shield.svg' }],
-    ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }],
-    ['link', { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' }],
-    ['link', { href: 'https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap', rel: 'stylesheet' }],
   ],
   themeConfig: {
     logo: '/shield.svg',
+    siteTitle: 'AEGIS',
     nav: [
       { text: 'Guide', link: '/guide/getting-started' },
       { text: 'Architecture', link: '/architecture' },
@@ -67,7 +66,7 @@ export default defineConfig({
     ],
     footer: {
       message: 'Built on NanoClaw',
-      copyright: 'AEGIS CTI Platform',
+      copyright: 'MIT License',
     },
     search: {
       provider: 'local',
