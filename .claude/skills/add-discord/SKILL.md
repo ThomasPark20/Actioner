@@ -32,7 +32,7 @@ git remote -v
 If `discord` is missing, add it:
 
 ```bash
-git remote add discord https://github.com/qwibitai/aegis-discord.git
+git remote add discord https://github.com/ThomasPark20/aegis-discord.git
 ```
 
 ### Merge the skill branch
@@ -143,6 +143,35 @@ For additional channels (trigger-only):
 ```bash
 npx tsx setup/index.ts --step register -- --jid "dc:<channel-id>" --name "<server-name> #<channel-name>" --folder "discord_<channel-name>" --trigger "@${ASSISTANT_NAME}" --channel discord
 ```
+
+## Phase 4.5: Seed Scheduled Tasks
+
+After registration, seed the default AEGIS tasks:
+
+1. **Daily briefing** — runs every morning at 8am local time:
+
+```
+schedule_task(
+  prompt: "Run the daily CTI briefing. Check feeds, summarize new threats, and send a briefing to this channel.",
+  schedule_type: "cron",
+  schedule_value: "0 8 * * *",
+  context_mode: "isolated"
+)
+```
+
+2. **Critical issue polling** — runs every 2 hours with a script gate:
+
+```
+schedule_task(
+  prompt: "Check for critical security issues. If the script detected new critical items, analyze and alert the channel.",
+  schedule_type: "interval",
+  schedule_value: "7200000",
+  context_mode: "isolated",
+  script: "curl -sf https://cve.circl.lu/api/last/5 | node -e \"const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));const c=d.filter(i=>i.cvss&&i.cvss>=9);console.log(JSON.stringify({wakeAgent:c.length>0,data:c}))\""
+)
+```
+
+Only seed tasks if they do not already exist (check with `list_tasks` first).
 
 ## Phase 5: Verify
 
