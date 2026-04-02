@@ -3,15 +3,16 @@ import path from 'path';
 
 import { CronExpressionParser } from 'cron-parser';
 
-import { DATA_DIR, IPC_POLL_INTERVAL, TIMEZONE } from './config.js';
+import { DATA_DIR, GROUPS_DIR, IPC_POLL_INTERVAL, TIMEZONE } from './config.js';
 import { AvailableGroup } from './container-runner.js';
 import { createTask, deleteTask, getTaskById, updateTask } from './db.js';
-import { isValidGroupFolder } from './group-folder.js';
+import { isValidGroupFolder, resolveGroupFolderPath } from './group-folder.js';
 import { logger } from './logger.js';
 import { RegisteredGroup } from './types.js';
 
 export interface IpcDeps {
   sendMessage: (jid: string, text: string) => Promise<void>;
+  sendFile: (jid: string, filePath: string, caption?: string) => Promise<void>;
   registeredGroups: () => Record<string, RegisteredGroup>;
   registerGroup: (jid: string, group: RegisteredGroup) => void;
   syncGroups: (force: boolean) => Promise<void>;
@@ -74,23 +75,59 @@ export function startIpcWatcher(deps: IpcDeps): void {
             const filePath = path.join(messagesDir, file);
             try {
               const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-              if (data.type === 'message' && data.chatJid && data.text) {
+              const targetJid = data.chatJid;
+
+              if (targetJid) {
                 // Authorization: verify this group can send to this chatJid
-                const targetGroup = registeredGroups[data.chatJid];
-                if (
-                  isMain ||
-                  (targetGroup && targetGroup.folder === sourceGroup)
-                ) {
-                  await deps.sendMessage(data.chatJid, data.text);
-                  logger.info(
-                    { chatJid: data.chatJid, sourceGroup },
-                    'IPC message sent',
-                  );
-                } else {
+                const targetGroup = registeredGroups[targetJid];
+                const authorized =
+                  isMain || (targetGroup && targetGroup.folder === sourceGroup);
+
+                if (!authorized) {
                   logger.warn(
-                    { chatJid: data.chatJid, sourceGroup },
+                    { chatJid: targetJid, sourceGroup },
                     'Unauthorized IPC message attempt blocked',
                   );
+                } else if (data.type === 'message' && data.text) {
+                  await deps.sendMessage(targetJid, data.text);
+                  logger.info(
+                    { chatJid: targetJid, sourceGroup },
+                    'IPC message sent',
+                  );
+                } else if (data.type === 'file' && data.filePath) {
+                  // Resolve container path → host path.
+                  const containerPath: string = data.filePath;
+                  let hostPath: string | null = null;
+                  if (containerPath.startsWith('/workspace/group/')) {
+                    hostPath = path.join(
+                      resolveGroupFolderPath(sourceGroup),
+                      containerPath.slice('/workspace/group/'.length),
+                    );
+                  } else if (containerPath.startsWith('/workspace/global/')) {
+                    hostPath = path.join(
+                      GROUPS_DIR,
+                      'global',
+                      containerPath.slice('/workspace/global/'.length),
+                    );
+                  } else {
+                    logger.warn(
+                      { containerPath, sourceGroup },
+                      'IPC file path outside mounted directories, skipping',
+                    );
+                  }
+
+                  if (hostPath && fs.existsSync(hostPath)) {
+                    await deps.sendFile(targetJid, hostPath, data.caption);
+                    logger.info(
+                      { chatJid: targetJid, sourceGroup, hostPath },
+                      'IPC file sent',
+                    );
+                  } else if (hostPath) {
+                    logger.warn(
+                      { hostPath, containerPath, sourceGroup },
+                      'IPC file not found on host',
+                    );
+                  }
                 }
               }
               fs.unlinkSync(filePath);

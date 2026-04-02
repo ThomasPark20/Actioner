@@ -509,17 +509,19 @@ async function startMessageLoop(): Promise<void> {
             ASSISTANT_NAME,
             MAX_MESSAGES_PER_PROMPT,
           );
-          const messagesToSend =
-            allPending.length > 0 ? allPending : groupMessages;
-          const formatted = formatMessages(messagesToSend, TIMEZONE);
+          // If allPending is empty, the agent cursor already covers these
+          // messages (e.g. recovery already processing them). Skip to avoid
+          // piping duplicates to an active container.
+          if (allPending.length === 0) continue;
+          const formatted = formatMessages(allPending, TIMEZONE);
 
           if (queue.sendMessage(chatJid, formatted)) {
             logger.debug(
-              { chatJid, count: messagesToSend.length },
+              { chatJid, count: allPending.length },
               'Piped messages to active container',
             );
             lastAgentTimestamp[chatJid] =
-              messagesToSend[messagesToSend.length - 1].timestamp;
+              allPending[allPending.length - 1].timestamp;
             saveState();
             // Show typing indicator while the container processes the piped message
             channel
@@ -716,6 +718,18 @@ async function main(): Promise<void> {
       const channel = findChannel(channels, jid);
       if (!channel) throw new Error(`No channel for JID: ${jid}`);
       return channel.sendMessage(jid, text);
+    },
+    sendFile: (jid, filePath, caption) => {
+      const channel = findChannel(channels, jid);
+      if (!channel) throw new Error(`No channel for JID: ${jid}`);
+      if (!channel.sendFile) {
+        // Fallback: send caption with file name if channel doesn't support files
+        const fallback = caption
+          ? `${caption}\n(File: ${filePath})`
+          : `(File: ${filePath})`;
+        return channel.sendMessage(jid, fallback);
+      }
+      return channel.sendFile(jid, filePath, caption);
     },
     registeredGroups: () => registeredGroups,
     registerGroup,
