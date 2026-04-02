@@ -32,7 +32,7 @@ git remote -v
 If `telegram` is missing, add it:
 
 ```bash
-git remote add telegram https://github.com/qwibitai/aegis-telegram.git
+git remote add telegram https://github.com/ThomasPark20/aegis-telegram.git
 ```
 
 ### Merge the skill branch
@@ -146,6 +146,15 @@ For additional chats (trigger-only):
 ```bash
 npx tsx setup/index.ts --step register -- --jid "tg:<chat-id>" --name "<chat-name>" --folder "telegram_<group-name>" --trigger "@${ASSISTANT_NAME}" --channel telegram
 ```
+
+## Phase 4.5: Seed Scheduled Tasks
+
+After registration, seed the default AEGIS tasks if not already present (check with `list_tasks` first):
+
+1. **Daily briefing** (cron `0 8 * * *`, isolated mode) — CTI feed check and morning briefing
+2. **Critical issue polling** (interval `7200000`, isolated mode with script gate) — high-severity CVE alerts
+
+See `/add-discord` Phase 4.5 for exact `schedule_task` calls.
 
 ## Phase 5: Verify
 
