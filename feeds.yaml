@@ -1,0 +1,24 @@
+feeds:
+  - name: BleepingComputer
+    url: https://www.bleepingcomputer.com/feed/
+  - name: The Record
+    url: https://therecord.media/feed
+  - name: Unit42
+    url: https://unit42.paloaltonetworks.com/feed/
+  - name: Krebs on Security
+    url: https://krebsonsecurity.com/feed/
+  - name: The DFIR Report
+    url: https://thedfirreport.com/feed/
+  - name: SentinelOne Labs
+    url: https://www.sentinelone.com/labs/feed/
+  - name: Cisco Talos
+    url: https://blog.talosintelligence.com/rss/
+  - name: Microsoft Security Blog
+    url: https://www.microsoft.com/en-us/security/blog/feed/
+  - name: Google TAG
+    url: https://blog.google/threat-analysis-group/rss/
+  - name: Elastic Security Labs
+    url: https://www.elastic.co/security-labs/rss/feed
+  - name: Reddit Cybersecurity
+    url: https://www.reddit.com/r/cybersecurity/.rss
+  # Add your own feeds below
