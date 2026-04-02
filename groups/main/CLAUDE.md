@@ -529,8 +529,42 @@ When `data.criticalArticles` is non-empty:
 1. **Group related articles** — multiple articles about the same CVE or threat actor should be grouped into one research topic
 2. **Dedup against active research** — check `/workspace/ipc/current_tasks.json` for running research threads on the same topic. Do NOT dispatch duplicate threads
 3. **Dedup against existing summaries** — check `../global/summaries/` for existing coverage. Skip topics already covered
-4. **For each new critical topic group**, dispatch a research thread (see US-504 critical thread instructions below)
+4. **For each new critical topic group**, dispatch a critical research thread (see below)
 5. **Send a brief alert** to the channel: "Detected [N] critical items in the latest scan. Spinning up research threads." — keep it short, no inline report dumps
+
+### Dispatching Critical Research Threads
+
+For each unique critical topic group (after grouping, dedup against active threads and existing summaries), create a research thread using the `start_research_thread` IPC action:
+
+```bash
+cat > /workspace/ipc/tasks/critical_research_$(date +%s)_TOPICSLUG.json << EOF
+{
+  "type": "start_research_thread",
+  "parentJid": "$NANOCLAW_CHAT_JID",
+  "threadName": "Critical: [Topic Name]",
+  "researchTopic": "[topic name — e.g. CVE-2026-1234, APT-41 campaign, etc.]",
+  "idleExpiryMs": 600000,
+  "prompt": "CRITICAL THREAT ALERT — immediate research required.\n\nExecutive brief: [2-3 sentence summary of what was detected and why it is critical. Include the CVE ID, threat actor name, or campaign name. State the severity and potential impact.]\n\nArticles detected:\n- [title] — [url]\n- [title] — [url]\n\nResearch instructions:\n1. INGEST: Read and analyze all linked articles. Follow primary sources.\n2. RESEARCH: Identify affected products/versions, attack vectors, TTPs, threat actor attribution, and timeline.\n3. IOC EXTRACT: Extract all indicators of compromise (IPs, domains, hashes, file paths, registry keys, C2 infrastructure).\n4. DO NOT generate detection rules unless explicitly asked — focus on the threat assessment and IOCs.\n5. Save the complete summary to ../global/summaries/$(date +%Y-%m-%d)-critical-TOPICSLUG.md\n6. Send a message with the executive brief (2-3 sentences) and attach the full summary as an .md file via send_file.\n\nThis is a critical item — prioritize speed and accuracy."
+}
+EOF
+```
+
+**Thread naming:** Always use the format `Critical: [Topic Name]` — e.g. `Critical: CVE-2026-1234`, `Critical: APT-41 Supply Chain Campaign`, `Critical: MOVEit Zero-Day Active Exploitation`.
+
+**Executive brief in thread:** The thread's opening message MUST start with a 2-3 sentence executive brief explaining what was found and why it's critical. Example:
+> "A critical zero-day vulnerability (CVE-2026-1234) in Apache HTTP Server is under active exploitation. Multiple sources report widespread scanning activity targeting exposed instances. CISA has issued an emergency directive requiring federal agencies to patch within 48 hours."
+
+**Research scope:** The research prompt includes ingest, research, and IOC extraction — but NO rule-gen by default. The user can request detection rules in the thread if needed.
+
+**Full summary as file:** The research agent MUST save the complete summary to `../global/summaries/` and attach it as an .md file via `send_file`. NEVER dump the full report as an inline message.
+
+**Thread expiry:** Each critical research thread has `idleExpiryMs: 600000` (10 minutes) — same as regular research threads. The thread stays archived in Discord for reference after expiry.
+
+**Dedup rules (CRITICAL):**
+- Before dispatching, ALWAYS check `/workspace/ipc/current_tasks.json` for active research threads with similar topic names
+- Check `../global/summaries/` for existing summaries covering the same CVE/threat
+- If an active thread or recent summary exists for the topic, do NOT dispatch a duplicate — instead, note it in the channel alert ("Already tracking CVE-2026-1234 in an existing thread")
+- Multiple articles about the same topic = ONE thread, not multiple threads
 
 ### Seeding the RSS scan task during channel setup
 
