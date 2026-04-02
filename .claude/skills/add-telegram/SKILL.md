@@ -1,87 +1,47 @@
 ---
 name: add-telegram
-description: Add Telegram as a channel. Can replace WhatsApp entirely or run alongside it. Also configurable as a control-only channel (triggers actions) or passive channel (receives notifications only).
+description: Configure Telegram bot channel integration for AEGIS. No code changes needed — Telegram support is bundled.
 ---
 
 # Add Telegram Channel
 
-This skill adds Telegram support to AEGIS, then walks through interactive setup.
+This skill configures a Telegram bot for AEGIS. The Telegram channel code is already bundled in the repo — this skill just collects your token and registers the channel.
 
-## Phase 1: Pre-flight
+## Phase 1: Pre-flight Check
 
-### Check if already applied
+### Check if already configured
 
-Check if `src/channels/telegram.ts` exists. If it does, skip to Phase 3 (Setup). The code changes are already in place.
+Check if `TELEGRAM_BOT_TOKEN` is set in `.env`:
+
+```bash
+grep TELEGRAM_BOT_TOKEN .env 2>/dev/null
+```
+
+If it's already set and non-empty, skip to Phase 3 (Registration). Ask the user if they want to reconfigure or add another chat.
 
 ### Ask the user
 
-Use `AskUserQuestion` to collect configuration:
-
 AskUserQuestion: Do you have a Telegram bot token, or do you need to create one?
 
-If they have one, collect it now. If not, we'll create one in Phase 3.
+If they have one, collect it and skip to Phase 2 (Configure). If not, walk them through creating one below.
 
-## Phase 2: Apply Code Changes
-
-### Ensure channel remote
-
-```bash
-git remote -v
-```
-
-If `telegram` is missing, add it:
-
-```bash
-git remote add telegram https://github.com/ThomasPark20/aegis-telegram.git
-```
-
-### Merge the skill branch
-
-```bash
-git fetch telegram main
-git merge telegram/main || {
-  git checkout --theirs package-lock.json
-  git add package-lock.json
-  git merge --continue
-}
-```
-
-This merges in:
-- `src/channels/telegram.ts` (TelegramChannel class with self-registration via `registerChannel`)
-- `src/channels/telegram.test.ts` (unit tests with grammy mock)
-- `import './telegram.js'` appended to the channel barrel file `src/channels/index.ts`
-- `grammy` npm dependency in `package.json`
-- `TELEGRAM_BOT_TOKEN` in `.env.example`
-
-If the merge reports conflicts, resolve them by reading the conflicted files and understanding the intent of both sides.
-
-### Validate code changes
-
-```bash
-npm install
-npm run build
-npx vitest run src/channels/telegram.test.ts
-```
-
-All tests must pass (including the new Telegram tests) and build must be clean before proceeding.
-
-## Phase 3: Setup
-
-### Create Telegram Bot (if needed)
+### Create Telegram Bot
 
 If the user doesn't have a bot token, tell them:
 
 > I need you to create a Telegram bot:
 >
 > 1. Open Telegram and search for `@BotFather`
-> 2. Send `/newbot` and follow prompts:
+> 2. Send `/newbot` and follow the prompts:
 >    - Bot name: Something friendly (e.g., "AEGIS Assistant")
 >    - Bot username: Must end with "bot" (e.g., "aegis_cti_bot")
 > 3. Copy the bot token (looks like `123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11`)
 
 Wait for the user to provide the token.
 
-### Configure environment
+## Phase 2: Configure Environment
+
+### Write the token
 
 Add to `.env`:
 
@@ -91,7 +51,7 @@ TELEGRAM_BOT_TOKEN=<their-token>
 
 Channels auto-enable when their credentials are present — no extra configuration needed.
 
-Sync to container environment:
+### Sync to container environment
 
 ```bash
 mkdir -p data/env && cp .env data/env/env
@@ -119,42 +79,62 @@ launchctl kickstart -k gui/$(id -u)/com.aegis  # macOS
 # Linux: systemctl --user restart aegis
 ```
 
-## Phase 4: Registration
+## Phase 3: Registration
 
 ### Get Chat ID
 
-Tell the user:
+Ask the user:
 
+> To get the chat ID:
+>
 > 1. Open your bot in Telegram (search for its username)
-> 2. Send `/chatid` — it will reply with the chat ID
+> 2. Send `/chatid` — the bot will reply with the chat ID
 > 3. For groups: add the bot to the group first, then send `/chatid` in the group
+>
+> The chat ID will be a number like `123456789` (DMs) or `-1001234567890` (groups).
 
-Wait for the user to provide the chat ID (format: `tg:123456789` or `tg:-1001234567890`).
+Wait for the user to provide the chat ID and a name for the chat.
 
 ### Register the chat
-
-The chat ID, name, and folder name are needed. Use `npx tsx setup/index.ts --step register` with the appropriate flags.
 
 For a main chat (responds to all messages):
 
 ```bash
-npx tsx setup/index.ts --step register -- --jid "tg:<chat-id>" --name "<chat-name>" --folder "telegram_main" --trigger "@${ASSISTANT_NAME}" --channel telegram --no-trigger-required --is-main
+npx tsx setup/index.ts --step register -- --jid "tg:<chat-id>" --name "<chat-name>" --folder "telegram_main" --trigger "@AEGIS" --channel telegram --no-trigger-required --is-main
 ```
 
 For additional chats (trigger-only):
 
 ```bash
-npx tsx setup/index.ts --step register -- --jid "tg:<chat-id>" --name "<chat-name>" --folder "telegram_<group-name>" --trigger "@${ASSISTANT_NAME}" --channel telegram
+npx tsx setup/index.ts --step register -- --jid "tg:<chat-id>" --name "<chat-name>" --folder "telegram_<group-name>" --trigger "@AEGIS" --channel telegram
 ```
 
-## Phase 4.5: Seed Scheduled Tasks
+## Phase 4: Seed Scheduled Tasks
 
-After registration, seed the default AEGIS tasks if not already present (check with `list_tasks` first):
+After registration, seed the default AEGIS tasks. **Only seed if they don't already exist** — check with `list_tasks` first.
 
-1. **Daily briefing** (cron `0 8 * * *`, isolated mode) — CTI feed check and morning briefing
-2. **Critical issue polling** (interval `7200000`, isolated mode with script gate) — high-severity CVE alerts
+1. **Daily briefing** — runs every morning at 8am local time:
 
-See `/add-discord` Phase 4.5 for exact `schedule_task` calls.
+```
+schedule_task(
+  prompt: "Run the daily CTI briefing. Check feeds, summarize new threats, and send a briefing to this channel.",
+  schedule_type: "cron",
+  schedule_value: "0 8 * * *",
+  context_mode: "isolated"
+)
+```
+
+2. **Critical issue polling** — runs every 2 hours with a script gate:
+
+```
+schedule_task(
+  prompt: "Check for critical security issues. If the script detected new critical items, analyze and alert the channel.",
+  schedule_type: "interval",
+  schedule_value: "7200000",
+  context_mode: "isolated",
+  script: "curl -sf https://cve.circl.lu/api/last/5 | node -e \"const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));const c=d.filter(i=>i.cvss&&i.cvss>=9);console.log(JSON.stringify({wakeAgent:c.length>0,data:c}))\""
+)
+```
 
 ## Phase 5: Verify
 
@@ -178,11 +158,11 @@ tail -f logs/aegis.log
 
 ### Bot not responding
 
-Check:
-1. `TELEGRAM_BOT_TOKEN` is set in `.env` AND synced to `data/env/env`
-2. Chat is registered in SQLite (check with: `sqlite3 store/messages.db "SELECT * FROM registered_groups WHERE jid LIKE 'tg:%'"`)
-3. For non-main chats: message includes trigger pattern
+1. Check `TELEGRAM_BOT_TOKEN` is set in `.env` AND synced to `data/env/env`
+2. Check chat is registered: `sqlite3 store/messages.db "SELECT * FROM registered_groups WHERE jid LIKE 'tg:%'"`
+3. For non-main chats: message must include trigger pattern (@mention the bot)
 4. Service is running: `launchctl list | grep aegis` (macOS) or `systemctl --user status aegis` (Linux)
+5. Verify token: `curl -s "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getMe"`
 
 ### Bot only responds to @mentions in groups
 
@@ -198,26 +178,10 @@ If `/chatid` doesn't work:
 
 ## After Setup
 
-If running `npm run dev` while the service is active:
-```bash
-# macOS:
-launchctl unload ~/Library/LaunchAgents/com.aegis.plist
-npm run dev
-# When done testing:
-launchctl load ~/Library/LaunchAgents/com.aegis.plist
-# Linux:
-# systemctl --user stop aegis
-# npm run dev
-# systemctl --user start aegis
-```
-
-## Removal
-
-To remove Telegram integration:
-
-1. Delete `src/channels/telegram.ts` and `src/channels/telegram.test.ts`
-2. Remove `import './telegram.js'` from `src/channels/index.ts`
-3. Remove `TELEGRAM_BOT_TOKEN` from `.env`
-4. Remove Telegram registrations from SQLite: `sqlite3 store/messages.db "DELETE FROM registered_groups WHERE jid LIKE 'tg:%'"`
-5. Uninstall: `npm uninstall grammy`
-6. Rebuild: `npm run build && launchctl kickstart -k gui/$(id -u)/com.aegis` (macOS) or `npm run build && systemctl --user restart aegis` (Linux)
+The Telegram bot supports:
+- Text messages in registered chats and groups
+- Media handling (photos, documents, videos shown as descriptions)
+- Reply context (shows who the user is replying to)
+- @mention translation (Telegram mentions → AEGIS trigger format)
+- Message splitting for long responses
+- File sending for reports and exports via `sendDocument`
