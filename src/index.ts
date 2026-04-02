@@ -739,7 +739,13 @@ async function main(): Promise<void> {
       return channel.createThread(parentJid, name);
     },
     storeMessage: (msg) => {
-      storeChatMetadata(msg.chat_jid, msg.timestamp, undefined, 'discord', true);
+      storeChatMetadata(
+        msg.chat_jid,
+        msg.timestamp,
+        undefined,
+        'discord',
+        true,
+      );
       storeMessage(msg);
     },
     registeredGroups: () => registeredGroups,

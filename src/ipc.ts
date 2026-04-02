@@ -563,11 +563,9 @@ export async function processTaskIpc(
       const threadClaudePath = path.join(threadGroupDir, 'CLAUDE.md');
 
       if (fs.existsSync(researchTemplatePath)) {
-        const researchTemplate = fs.readFileSync(
-          researchTemplatePath,
-          'utf-8',
-        );
-        const topic = data.researchTopic || data.threadName.replace(/^Research:\s*/i, '');
+        const researchTemplate = fs.readFileSync(researchTemplatePath, 'utf-8');
+        const topic =
+          data.researchTopic || data.threadName.replace(/^Research:\s*/i, '');
         const threadHeader = `<!-- Thread context: This is a research thread for "${topic}". -->
 <!-- The user can send follow-up messages here. Incorporate them into your research. -->
 <!-- Do NOT start concurrent research — augment the current investigation instead. -->

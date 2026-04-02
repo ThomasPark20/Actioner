@@ -256,10 +256,7 @@ export class DiscordChannel implements Channel {
     }
   }
 
-  async createThread(
-    parentJid: string,
-    name: string,
-  ): Promise<string | null> {
+  async createThread(parentJid: string, name: string): Promise<string | null> {
     if (!this.client) {
       logger.warn('Discord client not initialized');
       return null;
@@ -269,10 +266,7 @@ export class DiscordChannel implements Channel {
       const channelId = parentJid.replace(/^dc:/, '');
       const channel = await this.client.channels.fetch(channelId);
 
-      if (
-        !channel ||
-        channel.type !== ChannelType.GuildText
-      ) {
+      if (!channel || channel.type !== ChannelType.GuildText) {
         logger.warn(
           { parentJid },
           'Discord channel not found or not a text channel',

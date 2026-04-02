@@ -97,10 +97,7 @@ export interface Channel {
   // Optional: send a file as an attachment.
   sendFile?(jid: string, filePath: string, caption?: string): Promise<void>;
   // Optional: create a thread in a channel. Returns the thread's JID or null.
-  createThread?(
-    parentJid: string,
-    name: string,
-  ): Promise<string | null>;
+  createThread?(parentJid: string, name: string): Promise<string | null>;
   // Optional: sync group/chat names from the platform.
   syncGroups?(force: boolean): Promise<void>;
 }
