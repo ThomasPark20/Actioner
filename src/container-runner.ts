@@ -130,6 +130,7 @@ function buildVolumeMounts(
       settingsFile,
       JSON.stringify(
         {
+          model: 'claude-opus-4-6',
           env: {
             // Enable agent swarms (subagent orchestration)
             // https://code.claude.com/docs/en/agent-teams#orchestrate-teams-of-claude-code-sessions
