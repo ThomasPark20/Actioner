@@ -33,7 +33,15 @@ ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium
 # Install agent-browser and claude-code globally
 RUN npm install -g agent-browser @anthropic-ai/claude-code
 
-# Create app directory
+# --- AEGIS CTI validation tools ---
+RUN apt-get update && apt-get install -y \
+    python3-pip \
+    yara \
+    && pip3 install --break-system-packages sigma-cli pySigma-backend-splunk \
+    && (apt-get install -y snort || echo "WARNING: snort3 not available — skipping") \
+    && rm -rf /var/lib/apt/lists/*
+# --- End validation tools patch ---
+
 WORKDIR /app
 
 # Copy package files first for better caching
