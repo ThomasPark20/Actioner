@@ -1,10 +1,12 @@
 import {
   AttachmentBuilder,
+  ChannelType,
   Client,
   Events,
   GatewayIntentBits,
   Message,
   TextChannel,
+  ThreadChannel,
 } from 'discord.js';
 
 import { ASSISTANT_NAME, TRIGGER_PATTERN } from '../config.js';
@@ -251,6 +253,47 @@ export class DiscordChannel implements Channel {
       logger.info({ jid, filePath }, 'Discord file sent');
     } catch (err) {
       logger.error({ jid, filePath, err }, 'Failed to send Discord file');
+    }
+  }
+
+  async createThread(
+    parentJid: string,
+    name: string,
+  ): Promise<string | null> {
+    if (!this.client) {
+      logger.warn('Discord client not initialized');
+      return null;
+    }
+
+    try {
+      const channelId = parentJid.replace(/^dc:/, '');
+      const channel = await this.client.channels.fetch(channelId);
+
+      if (
+        !channel ||
+        channel.type !== ChannelType.GuildText
+      ) {
+        logger.warn(
+          { parentJid },
+          'Discord channel not found or not a text channel',
+        );
+        return null;
+      }
+
+      const textChannel = channel as TextChannel;
+      const thread = await textChannel.threads.create({
+        name,
+        autoArchiveDuration: 1440, // 24 hours
+      });
+
+      logger.info(
+        { parentJid, threadId: thread.id, name },
+        'Discord thread created',
+      );
+      return `dc:${thread.id}`;
+    } catch (err) {
+      logger.error({ parentJid, name, err }, 'Failed to create Discord thread');
+      return null;
     }
   }
 

@@ -40,6 +40,7 @@ export interface RegisteredGroup {
   containerConfig?: ContainerConfig;
   requiresTrigger?: boolean; // Default: true for groups, false for solo chats
   isMain?: boolean; // True for the main control group (no trigger, elevated privileges)
+  idleExpiryMs?: number; // If set, group is unregistered after this many ms of inactivity (used for research threads)
 }
 
 export interface NewMessage {
@@ -95,6 +96,11 @@ export interface Channel {
   setTyping?(jid: string, isTyping: boolean): Promise<void>;
   // Optional: send a file as an attachment.
   sendFile?(jid: string, filePath: string, caption?: string): Promise<void>;
+  // Optional: create a thread in a channel. Returns the thread's JID or null.
+  createThread?(
+    parentJid: string,
+    name: string,
+  ): Promise<string | null>;
   // Optional: sync group/chat names from the platform.
   syncGroups?(force: boolean): Promise<void>;
 }

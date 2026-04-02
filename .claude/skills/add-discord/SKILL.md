@@ -27,21 +27,38 @@ If they have one, collect it and skip to Phase 2 (Configure). If not, walk them 
 
 ### Create Discord Bot
 
-If the user doesn't have a bot token, tell them:
+If the user doesn't have a bot token, walk them through each step:
 
-> I need you to create a Discord bot:
+> **Step 1 — Create the Application**
 >
 > 1. Go to the [Discord Developer Portal](https://discord.com/developers/applications)
-> 2. Click **New Application** and give it a name (e.g., "AEGIS Assistant")
-> 3. Go to the **Bot** tab on the left sidebar
-> 4. Click **Reset Token** to generate a new bot token — copy it immediately (you can only see it once)
-> 5. Under **Privileged Gateway Intents**, enable:
->    - **Message Content Intent** (required to read message text)
->    - **Server Members Intent** (optional, for member display names)
-> 6. Go to **OAuth2** > **URL Generator**:
->    - Scopes: select `bot`
->    - Bot Permissions: select `Send Messages`, `Attach Files`, `Read Message History`, `View Channels`
->    - Copy the generated URL and open it in your browser to invite the bot to your server
+> 2. Click **New Application** in the top right
+> 3. Give it a name — e.g., **"AEGIS"** — and click Create
+>
+> **Step 2 — Configure the Bot**
+>
+> 1. In the left sidebar, click **Bot**
+> 2. Click **Reset Token** to generate a new bot token
+> 3. **Copy the token immediately** — you can only see it once. If you lose it, you'll need to reset again
+> 4. Under **Privileged Gateway Intents**, enable these (scroll down):
+>    - **Message Content Intent** — required so the bot can read message text
+>    - **Server Members Intent** — optional, for showing display names
+>
+> **Step 3 — Set Bot Permissions & Invite to Server**
+>
+> 1. In the left sidebar, click **OAuth2** > **URL Generator**
+> 2. Under **Scopes**, check: `bot`
+> 3. Under **Bot Permissions**, check these boxes:
+>    - `Send Messages` — so the bot can reply
+>    - `Send Messages in Threads` — so research threads work
+>    - `Create Public Threads` — so the bot can create research threads
+>    - `Attach Files` — for sending reports and exports
+>    - `Read Message History` — to understand conversation context
+>    - `View Channels` — to see the channels it's registered in
+> 4. Copy the generated URL at the bottom
+> 5. Open it in your browser — select your server and click **Authorize**
+>
+> **Step 4 — Copy the bot token and paste it here**
 
 Wait for the user to provide the token.
 
@@ -185,9 +202,21 @@ If you can't copy the channel ID:
 
 The Discord bot supports:
 - Text messages in registered channels
+- **Research threads** — research requests automatically create a Discord thread where the research agent works. Users can follow up in the thread with questions or additional context. Threads expire after 10 minutes of inactivity.
 - Attachment descriptions (images, videos, files shown as placeholders)
 - Reply context (shows who the user is replying to)
 - @mention translation (Discord `<@botId>` → AEGIS trigger format)
 - Message splitting for responses over 2000 characters
 - Typing indicators while the agent processes
 - File sending for reports and exports
+
+### Required Bot Permissions for Full Functionality
+
+| Permission | Why |
+|-----------|-----|
+| Send Messages | Reply to users |
+| Send Messages in Threads | Post research results in threads |
+| Create Public Threads | Spin up research threads automatically |
+| Attach Files | Send .md reports and exports |
+| Read Message History | Understand conversation context |
+| View Channels | See registered channels |

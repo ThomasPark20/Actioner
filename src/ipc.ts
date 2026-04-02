@@ -13,6 +13,8 @@ import { RegisteredGroup } from './types.js';
 export interface IpcDeps {
   sendMessage: (jid: string, text: string) => Promise<void>;
   sendFile: (jid: string, filePath: string, caption?: string) => Promise<void>;
+  createThread: (parentJid: string, name: string) => Promise<string | null>;
+  storeMessage: (msg: import('./types.js').NewMessage) => void;
   registeredGroups: () => Record<string, RegisteredGroup>;
   registerGroup: (jid: string, group: RegisteredGroup) => void;
   syncGroups: (force: boolean) => Promise<void>;
@@ -210,6 +212,10 @@ export async function processTaskIpc(
     trigger?: string;
     requiresTrigger?: boolean;
     containerConfig?: RegisteredGroup['containerConfig'];
+    // For start_research_thread
+    parentJid?: string;
+    threadName?: string;
+    researchTopic?: string;
   },
   sourceGroup: string, // Verified identity from IPC directory
   isMain: boolean, // Verified from directory path
@@ -498,6 +504,101 @@ export async function processTaskIpc(
         );
       }
       break;
+
+    case 'start_research_thread': {
+      // Only main group can create research threads
+      if (!isMain) {
+        logger.warn(
+          { sourceGroup },
+          'Unauthorized start_research_thread attempt blocked',
+        );
+        break;
+      }
+      if (!data.parentJid || !data.threadName || !data.prompt) {
+        logger.warn(
+          { data },
+          'Invalid start_research_thread request - missing required fields',
+        );
+        break;
+      }
+
+      // 1. Create Discord thread
+      const threadJid = await deps.createThread(
+        data.parentJid,
+        data.threadName,
+      );
+      if (!threadJid) {
+        logger.error(
+          { parentJid: data.parentJid, threadName: data.threadName },
+          'Failed to create Discord thread',
+        );
+        // Notify the parent channel that thread creation failed
+        await deps.sendMessage(
+          data.parentJid,
+          `Failed to create research thread. Check bot permissions (Create Public Threads).`,
+        );
+        break;
+      }
+
+      // 2. Register the thread as a group (no trigger required, 10 min idle expiry)
+      const threadFolder = `discord_research_${Date.now()}`;
+      const THREAD_IDLE_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
+
+      deps.registerGroup(threadJid, {
+        name: data.threadName,
+        folder: threadFolder,
+        trigger: '@AEGIS',
+        added_at: new Date().toISOString(),
+        requiresTrigger: false,
+        idleExpiryMs: THREAD_IDLE_EXPIRY_MS,
+      });
+
+      // 3. Copy research CLAUDE.md template and prepend thread context
+      const threadGroupDir = resolveGroupFolderPath(threadFolder);
+      const researchTemplatePath = path.join(
+        GROUPS_DIR,
+        'research',
+        'CLAUDE.md',
+      );
+      const threadClaudePath = path.join(threadGroupDir, 'CLAUDE.md');
+
+      if (fs.existsSync(researchTemplatePath)) {
+        const researchTemplate = fs.readFileSync(
+          researchTemplatePath,
+          'utf-8',
+        );
+        const topic = data.researchTopic || data.threadName.replace(/^Research:\s*/i, '');
+        const threadHeader = `<!-- Thread context: This is a research thread for "${topic}". -->
+<!-- The user can send follow-up messages here. Incorporate them into your research. -->
+<!-- Do NOT start concurrent research — augment the current investigation instead. -->
+
+`;
+        fs.writeFileSync(threadClaudePath, threadHeader + researchTemplate);
+      }
+
+      // 4. Store chat metadata so the message loop can find this JID
+      const now = new Date().toISOString();
+      deps.storeMessage({
+        id: `research-init-${Date.now()}`,
+        chat_jid: threadJid,
+        sender: 'system',
+        sender_name: 'AEGIS',
+        content: data.prompt,
+        timestamp: now,
+        is_from_me: false,
+      });
+
+      logger.info(
+        {
+          parentJid: data.parentJid,
+          threadJid,
+          threadFolder,
+          topic: data.researchTopic,
+        },
+        'Research thread created and research initiated',
+      );
+      break;
+    }
 
     default:
       logger.warn({ type: data.type }, 'Unknown IPC task type');

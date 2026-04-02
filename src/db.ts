@@ -157,6 +157,15 @@ function createSchema(database: Database.Database): void {
   } catch {
     /* columns already exist */
   }
+
+  // Add idle_expiry_ms column for thread group auto-expiry
+  try {
+    database.exec(
+      `ALTER TABLE registered_groups ADD COLUMN idle_expiry_ms INTEGER`,
+    );
+  } catch {
+    /* column already exists */
+  }
 }
 
 export function initDatabase(): void {
@@ -609,6 +618,7 @@ export function getRegisteredGroup(
         container_config: string | null;
         requires_trigger: number | null;
         is_main: number | null;
+        idle_expiry_ms: number | null;
       }
     | undefined;
   if (!row) return undefined;
@@ -631,6 +641,7 @@ export function getRegisteredGroup(
     requiresTrigger:
       row.requires_trigger === null ? undefined : row.requires_trigger === 1,
     isMain: row.is_main === 1 ? true : undefined,
+    idleExpiryMs: row.idle_expiry_ms ?? undefined,
   };
 }
 
@@ -639,8 +650,8 @@ export function setRegisteredGroup(jid: string, group: RegisteredGroup): void {
     throw new Error(`Invalid group folder "${group.folder}" for JID ${jid}`);
   }
   db.prepare(
-    `INSERT OR REPLACE INTO registered_groups (jid, name, folder, trigger_pattern, added_at, container_config, requires_trigger, is_main)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT OR REPLACE INTO registered_groups (jid, name, folder, trigger_pattern, added_at, container_config, requires_trigger, is_main, idle_expiry_ms)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     jid,
     group.name,
@@ -650,6 +661,7 @@ export function setRegisteredGroup(jid: string, group: RegisteredGroup): void {
     group.containerConfig ? JSON.stringify(group.containerConfig) : null,
     group.requiresTrigger === undefined ? 1 : group.requiresTrigger ? 1 : 0,
     group.isMain ? 1 : 0,
+    group.idleExpiryMs ?? null,
   );
 }
 
@@ -663,6 +675,7 @@ export function getAllRegisteredGroups(): Record<string, RegisteredGroup> {
     container_config: string | null;
     requires_trigger: number | null;
     is_main: number | null;
+    idle_expiry_ms: number | null;
   }>;
   const result: Record<string, RegisteredGroup> = {};
   for (const row of rows) {
@@ -684,9 +697,23 @@ export function getAllRegisteredGroups(): Record<string, RegisteredGroup> {
       requiresTrigger:
         row.requires_trigger === null ? undefined : row.requires_trigger === 1,
       isMain: row.is_main === 1 ? true : undefined,
+      idleExpiryMs: row.idle_expiry_ms ?? undefined,
     };
   }
   return result;
+}
+
+export function getChatByJid(jid: string): ChatInfo | null {
+  const row = db
+    .prepare(
+      `SELECT jid, name, last_message_time, channel, is_group FROM chats WHERE jid = ?`,
+    )
+    .get(jid) as ChatInfo | undefined;
+  return row ?? null;
+}
+
+export function deleteRegisteredGroup(jid: string): void {
+  db.prepare('DELETE FROM registered_groups WHERE jid = ?').run(jid);
 }
 
 // --- JSON migration ---

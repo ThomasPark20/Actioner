@@ -30,11 +30,13 @@ import {
   ensureContainerRuntimeRunning,
 } from './container-runtime.js';
 import {
+  deleteRegisteredGroup,
   getAllChats,
   getAllRegisteredGroups,
   getAllSessions,
   deleteSession,
   getAllTasks,
+  getChatByJid,
   getLastBotMessageTimestamp,
   getMessagesSince,
   getNewMessages,
@@ -731,6 +733,15 @@ async function main(): Promise<void> {
       }
       return channel.sendFile(jid, filePath, caption);
     },
+    createThread: async (parentJid, name) => {
+      const channel = findChannel(channels, parentJid);
+      if (!channel?.createThread) return null;
+      return channel.createThread(parentJid, name);
+    },
+    storeMessage: (msg) => {
+      storeChatMetadata(msg.chat_jid, msg.timestamp, undefined, 'discord', true);
+      storeMessage(msg);
+    },
     registeredGroups: () => registeredGroups,
     registerGroup,
     syncGroups: async (force: boolean) => {
@@ -762,6 +773,28 @@ async function main(): Promise<void> {
   });
   queue.setProcessMessagesFn(processGroupMessages);
   recoverPendingMessages();
+
+  // Periodic cleanup of expired thread groups (e.g. research threads with idleExpiryMs)
+  const THREAD_EXPIRY_CHECK_INTERVAL = 60_000; // check every minute
+  setInterval(() => {
+    const now = Date.now();
+    for (const [jid, group] of Object.entries(registeredGroups)) {
+      if (!group.idleExpiryMs) continue;
+      const chat = getChatByJid(jid);
+      const lastActivity = chat
+        ? new Date(chat.last_message_time).getTime()
+        : new Date(group.added_at).getTime();
+      if (now - lastActivity > group.idleExpiryMs) {
+        delete registeredGroups[jid];
+        deleteRegisteredGroup(jid);
+        logger.info(
+          { jid, folder: group.folder, idleMs: now - lastActivity },
+          'Thread group expired and unregistered',
+        );
+      }
+    }
+  }, THREAD_EXPIRY_CHECK_INTERVAL);
+
   startMessageLoop().catch((err) => {
     logger.fatal({ err }, 'Message loop crashed unexpectedly');
     process.exit(1);
