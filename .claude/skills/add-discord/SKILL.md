@@ -158,7 +158,7 @@ schedule_task(
 ```
 schedule_task(
   taskId: "rss-scan",
-  prompt: "Process the RSS scan results. The script detected new articles from CTI feeds. Check data.criticalArticles for critical items requiring immediate research threads. Check data.newArticles for awareness. Group related articles, dedup against existing summaries and active research threads, then dispatch research threads for critical topics. Send a brief channel alert summarizing what was found.",
+  prompt: "Process the RSS scan results. The script detected new articles from CTI feeds.\n\nFor each topic group in data.criticalArticles: dedup against existing summaries (grep URLs in ../global/summaries/), then dispatch a start_research_thread IPC task with threadName 'Critical: [Topic Name]' and parentJid set to $NANOCLAW_CHAT_JID. The research prompt should include: ingest the articles, research the topic following primary sources, extract IOCs, save summary to ../global/summaries/<date>-<topic-slug>.md, and send_file the report in the thread. Do NOT generate detection rules unless the user asks in the thread.\n\nFor data.newArticles (non-critical): save article URLs and titles to investigation.md for daily compilation. Do NOT create threads for non-critical items.\n\nNEVER post full results as inline messages in the main channel — always use threads for critical items.",
   schedule_type: "cron",
   schedule_value: "0 */2 * * *",
   context_mode: "isolated",
@@ -219,6 +219,8 @@ If you can't copy the channel ID:
 The Discord bot supports:
 - Text messages in registered channels
 - **Research threads** — research requests automatically create a Discord thread where the research agent works. Users can follow up in the thread with questions or additional context. Threads expire after 10 minutes of inactivity.
+- **Critical alert threads** — every 2 hours, RSS feeds are scanned. Critical items (APTs, CVEs, zero-days, ransomware, data breaches) get their own thread: "Critical: [Topic Name]" with an executive brief and full report attached.
+- **Daily briefing thread** — at your configured time (default 8am), a "Daily Brief — YYYY-MM-DD" thread is created with an executive summary and full compiled report.
 - Attachment descriptions (images, videos, files shown as placeholders)
 - Reply context (shows who the user is replying to)
 - @mention translation (Discord `<@botId>` → AEGIS trigger format)
