@@ -437,7 +437,7 @@ When a user says something like "set daily report at 9am", "schedule my report f
      "type": "schedule_task",
      "taskId": "daily-report",
      "targetJid": "$NANOCLAW_CHAT_JID",
-     "prompt": "Compile and deliver the daily CTI briefing. Read all summaries from ../global/summaries/ with today's date prefix. Create an executive summary with the top 3-5 items, full topic summaries, and an IOC table if applicable. Save the compiled report to ../global/summaries/daily/$(date +%Y-%m-%d)-daily-report.md. Then create a new thread to deliver it: write a start_research_thread IPC task with threadName 'Daily Brief — $(date +%Y-%m-%d)', post the executive summary bullets as the opening message, and attach the full report as an .md file. If no new summaries exist for today, send a short message: 'No significant threat activity in the last 24 hours.'",
+     "prompt": "Compile and deliver the daily CTI briefing. Read all summaries from ../global/summaries/ with today's date prefix AND read the scan log at ../global/scan-log/YYYY-MM-DD.jsonl (one JSON per line, each with articles array including title/link/source/critical fields). Compile the report: executive summary, topic summaries (if any research ran), Notable Articles table with clickable [Read](url) links for every new article from the scan log, IOC table (if any), scan activity table showing each scan run. Save to ../global/summaries/daily/$(date +%Y-%m-%d)-daily-report.md. Deliver via start_research_thread with threadName 'Daily Brief — $(date +%Y-%m-%d)'. If no summaries AND no scan log exist, send: 'No scan activity or threat research in the last 24 hours.'",
      "schedule_type": "cron",
      "schedule_value": "0 9 * * *",
      "context_mode": "isolated"
@@ -497,17 +497,21 @@ When you wake from the `daily-report` scheduled task, compile and deliver the da
 
 1. **Gather today's summaries** — List files in `../global/summaries/` with today's date prefix (`YYYY-MM-DD-*.md`). Also include any critical summaries from `../global/summaries/daily/` for today. Skip if today's daily report already exists in `../global/summaries/daily/YYYY-MM-DD-daily-report.md`.
 
-2. **If no new summaries exist** — Send a short message: "No significant threat activity in the last 24 hours." Do NOT create an empty report. Stop.
+2. **Gather today's scan log** — Read `../global/scan-log/YYYY-MM-DD.jsonl`. Each line is a JSON scan run with `timestamp`, `feedsScanned`, `totalNew`, `totalCritical`, and `articles` array (each: `title`, `link`, `source`, `pubDate`, `snippet`, `critical` boolean). Parse all lines, collect unique articles by `link`. This feeds the Notable Articles and Scan Activity sections.
 
-3. **Compile the report** — Read each summary and compile into a structured daily brief:
-   - **Executive summary**: Top 3-5 items as bullet points, ordered by severity
-   - **Topic summaries**: 3-5 sentence overview per topic with severity, detection rule counts, and link to the full summary
+3. **If no summaries AND no scan log entries exist** — Send: "No scan activity or threat research in the last 24 hours." Stop.
+
+4. **Compile the report** — Read each summary and compile into a structured daily brief:
+   - **Executive summary**: Top 3-5 items as bullet points, ordered by severity. Include both researched topics and notable unresearched articles
+   - **Topic summaries**: 3-5 sentence overview per researched topic with severity, detection rule counts, and link to the full summary. Omit section if no research ran
+   - **Notable articles**: Table of ALL new articles from the scan log with Source, Title, and clickable `[Read](url)` link. Mark critical articles with **Critical** prefix. Order critical first, then by source. Every row must have a link
    - **IOC table**: Consolidated table of all IOCs extracted today (defanged). Omit if none
-   - **Detection rules summary**: Count of rules by type per topic
+   - **Detection rules summary**: Count of rules by type per topic. Omit if none
+   - **Scan activity**: Table showing each scan run's time, feeds count, new articles, and critical count. Summary line: "[N] scans completed, [F] feeds monitored, [T] new articles, [C] critical"
 
-4. **Save the report** to `../global/summaries/daily/$(date +%Y-%m-%d)-daily-report.md` (create the `daily/` subdirectory if it doesn't exist via `mkdir -p`)
+5. **Save the report** to `../global/summaries/daily/$(date +%Y-%m-%d)-daily-report.md` (create the `daily/` subdirectory if it doesn't exist via `mkdir -p`)
 
-5. **Deliver via thread** — Create a delivery thread using `start_research_thread` IPC:
+6. **Deliver via thread** — Create a delivery thread using `start_research_thread` IPC:
    ```bash
    cat > /workspace/ipc/tasks/daily_brief_$(date +%s).json << EOF
    {
@@ -520,15 +524,18 @@ When you wake from the `daily-report` scheduled task, compile and deliver the da
    EOF
    ```
 
-6. **Send a brief channel notification**: "Daily brief is ready — check the 'Daily Brief — YYYY-MM-DD' thread for the full report." Keep it to one line.
+7. **Send a brief channel notification**: "Daily brief is ready — check the 'Daily Brief — YYYY-MM-DD' thread for the full report." Keep it to one line.
 
 ### Important notes
 - The well-known task ID `daily-report` ensures there is never more than one daily report task
 - ALWAYS check `/workspace/ipc/current_tasks.json` before creating — use `update_task` if it already exists to avoid duplicates
 - The daily report does NOT use a script pre-check — the agent always wakes at report time to compile and deliver
+- **Always include Notable Articles and Scan Activity** when scan log data exists, even on quiet days with no full research. This is the user's proof that scans ran and their view into what's happening
+- Every article in Notable Articles MUST have a clickable `[Read](url)` link
 - NEVER expose scheduling internals (cron expressions, task IDs, IPC) to users — just confirm the time and timezone
 - NEVER dump the full daily report as an inline message — always deliver via thread with the report attached as an .md file
 - Daily reports are saved in `../global/summaries/daily/` — separate from individual topic summaries
+- Scan log is at `../global/scan-log/YYYY-MM-DD.jsonl` — one JSON per line, one line per scan run
 - If a topic was already covered by a critical research thread, include it in the daily summary anyway for completeness
 
 ---
@@ -545,9 +552,10 @@ AEGIS scans RSS feeds every 2 hours to detect new threat intelligence articles. 
    - Fetches and parses all feeds
    - Deduplicates articles against existing summaries in `../global/summaries/`
    - Classifies articles as **critical** (APT, CVE, active exploitation, zero-day, ransomware, data breach, CISA advisory, emergency directive) or non-critical
+   - **Persists a scan log** to `../global/scan-log/YYYY-MM-DD.jsonl` — every run appends a JSON line with timestamp, feed count, article count, and full article list (title, link, source, pubDate, snippet, critical flag). This happens on EVERY run, even when `wakeAgent: false`. The daily report reads this log to compile the Notable Articles and Scan Activity sections.
    - Returns `{ wakeAgent: true/false, data: { newArticles, criticalArticles, totalNew, totalCritical } }`
 3. If `wakeAgent: true` (critical articles found OR 10+ new articles), the agent wakes and receives the data
-4. If `wakeAgent: false`, nothing happens until the next scan
+4. If `wakeAgent: false`, nothing happens until the next scan — but the scan log still records what was found
 
 ### When the agent wakes from an RSS scan
 

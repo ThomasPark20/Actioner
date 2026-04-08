@@ -20,6 +20,9 @@ groups/global/summaries/*
 !groups/global/summaries/daily/
 groups/global/summaries/daily/*
 !groups/global/summaries/daily/.gitkeep
+!groups/global/scan-log/
+groups/global/scan-log/*
+!groups/global/scan-log/.gitkeep
 !groups/main/CLAUDE.md
 !groups/global/CLAUDE.md
 !groups/research/

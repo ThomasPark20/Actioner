@@ -95,9 +95,11 @@ When dispatched by the daily-report scheduled task, compile a comprehensive dail
 
 1. **Gather today's summaries** — List all files in `../global/summaries/` with today's date prefix (format: `YYYY-MM-DD-*.md`). Also check `../global/summaries/daily/` to avoid recompiling if today's report already exists.
 
-2. **If no new summaries exist for today** — Do NOT produce a full report. Instead, send a short message via `send_message`: "No significant threat activity in the last 24 hours." Then stop.
+2. **Gather today's scan log** — Read all lines from `../global/scan-log/YYYY-MM-DD.jsonl`. Each line is a JSON object representing one scan run with fields: `timestamp`, `feedsScanned`, `totalNew`, `totalCritical`, and an `articles` array (each article has `title`, `link`, `source`, `pubDate`, `snippet`, `critical`). Parse each line, collect all unique articles (dedup by `link`). This is your source for the Notable Articles and Scan Activity sections. If the file doesn't exist, no scans ran today.
 
-3. **Read all matching summaries** — For each summary file, read the full content. Extract:
+3. **If no summaries AND no scan log entries exist** — Send a short message via `send_message`: "No scan activity or threat research in the last 24 hours." Then stop.
+
+4. **Read all matching summaries** (if any) — For each summary file, read the full content. Extract:
    - Title / topic name
    - Executive summary or first paragraph
    - Key IOCs (defanged)
@@ -105,19 +107,21 @@ When dispatched by the daily-report scheduled task, compile a comprehensive dail
    - Detection rules generated (count and types)
    - Severity / criticality indicators
 
-4. **Compile the daily report** using this structure:
+5. **Compile the daily report** using this structure:
    ```markdown
-   # AEGIS Daily CTI Brief — YYYY-MM-DD
+   # Actioner Daily CTI Brief — YYYY-MM-DD
 
    ## Executive Summary
 
-   **[N] topics covered today.** Top items:
-   - [Most critical item — 1-2 sentence summary]
-   - [Second item — 1-2 sentence summary]
-   - [Third item — 1-2 sentence summary]
-   (up to 5 items, ordered by severity/impact)
+   **[N] topics researched, [M] new articles detected across [S] scans.** Top items:
+   - [Most critical item, 1-2 sentence summary]
+   - [Second item, 1-2 sentence summary]
+   - [Third item, 1-2 sentence summary]
+   (up to 5 items, ordered by severity/impact. Include both researched topics and notable unresearched articles.)
 
    ## Topic Summaries
+
+   (Include this section only if topic summaries were produced today.)
 
    ### [Topic 1 Name]
    **Severity:** [Critical/High/Medium/Low]
@@ -128,6 +132,19 @@ When dispatched by the daily-report scheduled task, compile a comprehensive dail
    ### [Topic 2 Name]
    ...
 
+   ## Notable Articles
+
+   New articles detected by feed scans that were not auto-researched. Review and request research on anything interesting.
+
+   | Source | Title | Link |
+   |--------|-------|------|
+   | BleepingComputer | **Critical** Axios report: npm supply chain attack... | [Read](https://...) |
+   | Unit42 | New Qakbot variant spotted in phishing campaigns | [Read](https://...) |
+   | The Record | CISA warns of... | [Read](https://...) |
+   ...
+
+   (Include ALL new articles from the scan log. Mark critical articles with **Critical** prefix in Title. Order: critical first, then by source. Every row MUST have a clickable [Read](url) link.)
+
    ## IOC Table
 
    | Type | Value | Context |
@@ -137,7 +154,7 @@ When dispatched by the daily-report scheduled task, compile a comprehensive dail
    | Hash (SHA256) | abc123... | [Malware name] sample |
    ...
 
-   (Only include if IOCs were extracted today. Defang all values.)
+   (Only include if IOCs were extracted today. Defang all values. Omit section if none.)
 
    ## Detection Rules Summary
 
@@ -146,15 +163,27 @@ When dispatched by the daily-report scheduled task, compile a comprehensive dail
    | [Topic 1] | N | N | N | N |
    | **Total** | **N** | **N** | **N** | **N** |
 
+   (Omit section if no rules generated today.)
+
+   ## Scan Activity
+
+   [N] scans completed today. [F] feeds monitored. [T] total new articles detected, [C] critical.
+
+   | Time (UTC) | Feeds | New | Critical |
+   |------------|-------|-----|----------|
+   | 02:00 | 11 | 5 | 0 |
+   | 04:00 | 11 | 3 | 1 |
+   | ... | ... | ... | ... |
+
    ## Sources
 
    - [Source Name](URL) — referenced in [topic]
    ...
    ```
 
-5. **Save the compiled report** to `../global/summaries/daily/YYYY-MM-DD-daily-report.md` (create the `daily/` subdirectory if it doesn't exist).
+6. **Save the compiled report** to `../global/summaries/daily/YYYY-MM-DD-daily-report.md` (create the `daily/` subdirectory if it doesn't exist).
 
-6. **Deliver the report** — Write a `start_research_thread` IPC task to create a delivery thread:
+7. **Deliver the report** — Write a `start_research_thread` IPC task to create a delivery thread:
    ```bash
    cat > /workspace/ipc/tasks/daily_brief_$(date +%s).json << EOF
    {
@@ -171,11 +200,14 @@ When dispatched by the daily-report scheduled task, compile a comprehensive dail
 
 ### Important notes
 - The daily report is a **compilation** — do NOT re-research topics. Just summarize what was already produced.
+- **Always include the Notable Articles and Scan Activity sections** when scan log data exists, even on days with no full research. This is the user's proof that scans ran and their window into what's happening across feeds.
+- Every article in Notable Articles MUST include a clickable `[Read](url)` link so the user can open and read it.
 - Keep the executive summary concise — bullets only, no paragraphs.
 - Order topics by severity (critical first, then high, medium, low).
 - If a critical item was already delivered via a critical research thread (from the 2-hour scan), still include it in the daily summary for completeness.
 - All IOCs in the report MUST be defanged.
 - The report file goes in `../global/summaries/daily/`, NOT the main `../global/summaries/` directory.
+- The scan log is at `../global/scan-log/YYYY-MM-DD.jsonl` — one JSON object per line, one line per scan run.
 
 ---
 

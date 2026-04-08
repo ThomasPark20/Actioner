@@ -3,7 +3,7 @@
 // Reads feeds.yaml, fetches RSS, deduplicates against summaries/, classifies critical vs non-critical
 // Output: JSON { wakeAgent: bool, data: { newArticles: [...], criticalArticles: [...] } }
 
-import { readFileSync, readdirSync } from 'fs';
+import { readFileSync, readdirSync, writeFileSync, mkdirSync, appendFileSync } from 'fs';
 import { join } from 'path';
 
 const CRITICAL_KEYWORDS = [
@@ -173,6 +173,29 @@ async function main() {
       newArticles.push(entry);
     }
   }
+
+  // Persist scan log — every run gets recorded so daily report can compile from it
+  const scanLogDir = join(projectRoot, 'groups', 'global', 'scan-log');
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const logFile = join(scanLogDir, `${today}.jsonl`);
+  try {
+    mkdirSync(scanLogDir, { recursive: true });
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      feedsScanned: feeds.length,
+      totalNew: newArticles.length,
+      totalCritical: criticalArticles.length,
+      articles: newArticles.map(a => ({
+        title: a.title,
+        link: a.link,
+        source: a.source,
+        pubDate: a.pubDate,
+        snippet: a.snippet,
+        critical: criticalArticles.some(c => c.link === a.link)
+      }))
+    };
+    appendFileSync(logFile, JSON.stringify(logEntry) + '\n');
+  } catch { /* scan-log write is best-effort — don't fail the scan */ }
 
   // Limit output size — top 20 new, all critical
   const output = {
