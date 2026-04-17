@@ -162,11 +162,21 @@ export function startIpcWatcher(deps: IpcDeps): void {
             .filter((f) => f.endsWith('.json'));
           for (const file of taskFiles) {
             const filePath = path.join(tasksDir, file);
+            // Atomically claim the file before async processing to prevent
+            // the next poll cycle from picking it up again (race condition
+            // that caused duplicate thread creation).
+            const claimedPath = filePath + '.processing';
             try {
-              const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+              fs.renameSync(filePath, claimedPath);
+            } catch {
+              // File was already claimed by a concurrent poll — skip it
+              continue;
+            }
+            try {
+              const data = JSON.parse(fs.readFileSync(claimedPath, 'utf-8'));
               // Pass source group identity to processTaskIpc for authorization
               await processTaskIpc(data, sourceGroup, isMain, deps);
-              fs.unlinkSync(filePath);
+              fs.unlinkSync(claimedPath);
             } catch (err) {
               logger.error(
                 { file, sourceGroup, err },
@@ -175,7 +185,7 @@ export function startIpcWatcher(deps: IpcDeps): void {
               const errorDir = path.join(ipcBaseDir, 'errors');
               fs.mkdirSync(errorDir, { recursive: true });
               fs.renameSync(
-                filePath,
+                claimedPath,
                 path.join(errorDir, `${sourceGroup}-${file}`),
               );
             }
