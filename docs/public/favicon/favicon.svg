@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <style>
+    .bg { fill: #0A0A0A; }
+    .slash { fill: #ffffff; }
+    .dot { fill: #f5a623; }
+    @media (prefers-color-scheme: light) {
+      .bg { fill: #ffffff; }
+      .slash { fill: #2b2b2b; }
+    }
+  </style>
+  <rect class="bg" width="512" height="512" rx="96"/>
+  <polygon class="slash" points="148,16 364,16 268,496 52,496"/>
+  <circle class="dot" cx="340" cy="410" r="62"/>
+</svg>

@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="1000" height="1000">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Advent+Pro:wght@700&amp;display=swap');
+    </style>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1000" height="1000" rx="64" fill="#0A0A0A"/>
+  
+  <!-- Node network — top-left cluster -->
+  <circle cx="132" cy="188" r="3.5" fill="#D4760A" opacity="0.5"/>
+  <circle cx="278" cy="132" r="2.5" fill="#D4760A" opacity="0.4"/>
+  <circle cx="77" cy="320" r="2" fill="#D4760A" opacity="0.35"/>
+  <circle cx="180" cy="268" r="2" fill="#D4760A" opacity="0.3"/>
+  <circle cx="220" cy="220" r="1.8" fill="#D4760A" opacity="0.25"/>
+  
+  <line x1="132" y1="188" x2="278" y2="132" stroke="#D4760A" stroke-width="0.8" opacity="0.18"/>
+  <line x1="132" y1="188" x2="77" y2="320" stroke="#D4760A" stroke-width="0.8" opacity="0.15"/>
+  <line x1="132" y1="188" x2="180" y2="268" stroke="#D4760A" stroke-width="0.6" opacity="0.12"/>
+  <line x1="77" y1="320" x2="180" y2="268" stroke="#D4760A" stroke-width="0.6" opacity="0.1"/>
+  <line x1="220" y1="220" x2="278" y2="132" stroke="#D4760A" stroke-width="0.5" opacity="0.08"/>
+
+  <!-- Node network — bottom-right cluster -->
+  <circle cx="830" cy="720" r="3" fill="#D4760A" opacity="0.45"/>
+  <circle cx="920" cy="800" r="2.5" fill="#D4760A" opacity="0.4"/>
+  <circle cx="770" cy="840" r="2" fill="#D4760A" opacity="0.3"/>
+  <circle cx="890" cy="690" r="2" fill="#D4760A" opacity="0.25"/>
+  <circle cx="860" cy="780" r="1.8" fill="#D4760A" opacity="0.35"/>
+  
+  <line x1="830" y1="720" x2="920" y2="800" stroke="#D4760A" stroke-width="0.8" opacity="0.18"/>
+  <line x1="830" y1="720" x2="770" y2="840" stroke="#D4760A" stroke-width="0.8" opacity="0.15"/>
+  <line x1="920" y1="800" x2="860" y2="780" stroke="#D4760A" stroke-width="0.6" opacity="0.12"/>
+  <line x1="830" y1="720" x2="890" y2="690" stroke="#D4760A" stroke-width="0.6" opacity="0.1"/>
+  <line x1="770" y1="840" x2="860" y2="780" stroke="#D4760A" stroke-width="0.6" opacity="0.1"/>
+
+  <!-- Wordmark — centered -->
+  <text 
+    x="500" 
+    y="488" 
+    font-family="'Advent Pro', 'Century Gothic', 'URW Gothic', 'ITC Avant Garde Gothic', sans-serif" 
+    font-weight="700" 
+    font-size="120" 
+    fill="#FFFFFF" 
+    text-anchor="middle" 
+    dominant-baseline="central"
+    letter-spacing="-1.5"
+  >Actionable</text>
+  
+  <!-- Orange period dot — brand accent -->
+  <circle cx="830" cy="530" r="12" fill="#D4760A"/>
+  
+</svg>

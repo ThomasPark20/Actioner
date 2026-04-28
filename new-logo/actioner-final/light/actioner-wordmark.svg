@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 80" width="480" height="80">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Advent+Pro:wght@700&amp;display=swap');
+      .wm { font-family: 'TeX Gyre Adventor', 'Advent Pro', 'Century Gothic', sans-serif; font-weight: 700; font-size: 68px; letter-spacing: -0.5px; }
+    </style>
+  </defs>
+  <!-- Slash: lean=27, thickness=15, height=58 -->
+  <polygon points="27,6 42,6 15,64 0,64" fill="#ffffff"/>
+  <!-- Dot: r=7, gap=12 from slash right, vertically near slash bottom -->
+  <circle cx="34" cy="56" r="7" fill="#d4760a"/>
+  <!-- "ctioner" -->
+  <text x="48" y="62" class="wm" fill="#ffffff">ctioner</text>
+</svg>

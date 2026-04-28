@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 80" width="480" height="80">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Advent+Pro:wght@700&amp;display=swap');
+      .wm { font-family: 'TeX Gyre Adventor', 'Advent Pro', 'Century Gothic', sans-serif; font-weight: 700; font-size: 68px; letter-spacing: -0.5px; }
+    </style>
+  </defs>
+  <polygon points="27,6 42,6 15,64 0,64" fill="#1a1a1a"/>
+  <circle cx="34" cy="56" r="7" fill="#d4760a"/>
+  <text x="48" y="62" class="wm" fill="#1a1a1a">ctioner</text>
+</svg>
