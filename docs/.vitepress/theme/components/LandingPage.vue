@@ -155,6 +155,11 @@ function showNext() {
 // ── Research posts ──
 const researchPosts = [
   {
+    title: 'Redsun: Windows Defender Cloud File LPE',
+    summary: 'Logic flaw in Defender cloud file remediation exploited for user-to-SYSTEM privilege escalation via NTFS junctions.',
+    link: '/Actioner/research/redsun-defender-lpe',
+  },
+  {
     title: 'Axios npm Supply Chain Compromise',
     summary: 'North Korean state-sponsored compromise of axios. Cross-platform RAT via postinstall hook.',
     link: '/Actioner/research/axios-supply-chain',
