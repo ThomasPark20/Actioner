@@ -23,7 +23,7 @@ This plugin gives your claude 2 abilities.
 
 ## See It Work
 
-Check out the sample reports in repo.
+Check out the sample reports from Actioner's daily [routine](https://github.com/ThomasPark20/Actioner-examples)
 
 
 ## Benchmark
