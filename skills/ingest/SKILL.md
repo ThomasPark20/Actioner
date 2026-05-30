@@ -9,24 +9,30 @@ Pull the configured CTI feeds and produce two things: (a) the **qualifying set**
 
 ## Step 1 — Read feed config
 
-Read `feeds.yaml` from the plugin/repo root. Each entry has a `name`, a `type` (`url` or `repo`, default `url`), and either a `url` or a `repo`+`path`:
+Read `feeds.yaml` from the plugin/repo root. It has **two feed sections — `feeds:` (shipped defaults) and `custom_feeds:` (the user's own). Read BOTH and combine them into one list; `custom_feeds` is not optional and is not a fallback.** Each entry has a `name`, a `type` (`url` or `repo`, default `url`), and either a `url` or a `repo`+`path`:
 
 ```yaml
 feeds:
   - name: BleepingComputer
     type: url
     url: https://www.bleepingcomputer.com/feed/
+
+custom_feeds:            # user-added — fetched alongside the defaults
   - name: Internal CTI
     type: repo
     repo: myorg/internal-intel
     path: feeds/
 ```
 
+The combined list (`feeds` + `custom_feeds`) is the full feed set for every step below. If `custom_feeds` is empty/commented out, just use `feeds`.
+
 ## Step 2 — Fetch each feed
+
+**Fetch every feed in the combined list (`feeds` + `custom_feeds`) — all N of them, no exceptions.** Count them up front. Do **not** sample a "representative subset," do **not** stop after the "primary" or "key" sources, do **not** fetch only enough to "gauge reachability." A run that attempted fewer than N has silently skipped sources and is **incomplete** — fetch the rest before triaging. The digest's coverage line must account for all N (`R of N reachable`).
 
 - **`type: url`** — fetch the RSS/Atom XML with **web_fetch**, and parse each entry: title, canonical URL, snippet (`<description>`/`<summary>`), published date, source name. **Requires the routine environment's network Access level to be `Full` (or `Custom` + feed domains)** — under the default `Trusted` level the egress proxy 403s feed domains and you'll reach almost nothing (see `/actioner:setup`).
 - **`type: repo`** — read the intel files from the connected repo at `repo`/`path` (the routine pulls them via the GitHub connector). Treat each as a source item with the same fields.
-- **Errors:** if a feed fails (timeout, 403, 404, malformed XML), log `[WARN] Failed to fetch: {name} ({url}) — {error}` and skip it. One dead feed never blocks the run — but **count reachable vs total feeds and surface it in the digest** (Step 6) so coverage gaps aren't silent. If reachability is near-zero, that's the `Trusted`-egress signature, not the feeds — fix the environment Access level.
+- **Errors:** if a feed fails (timeout, 403, 404, malformed XML), log `[WARN] Failed to fetch: {name} ({url}) — {error}` and skip it. One dead feed never blocks the run — but **count reachable vs total and surface it in the digest** (Step 6) so gaps aren't silent. Near-zero reachability is the `Trusted`-egress signature, not dead feeds — fix the environment Access level.
 
 ## Step 3 — Filter obvious noise
 

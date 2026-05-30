@@ -1,15 +1,18 @@
 # Actioner feed sources.
-# Each entry: name, type (url | repo; default url), and a url OR repo+path.
 #
-#   type: url   — public RSS/Atom feed, fetched with a browser User-Agent (see skills/ingest)
+# Two sections, both fetched every run (the ingest skill reads both):
+#   feeds:        — the shipped defaults. Edit if you like, but toolkit updates may change them.
+#   custom_feeds: — YOUR feeds. Add yours here; this section is yours to own.
+#
+# Each entry: name, type (url | repo; default url), and a url OR repo+path.
+#   type: url   — public RSS/Atom feed, fetched via web_fetch
 #   type: repo  — private/internal intel pulled from a connected GitHub repo
 #
-# Public feeds are a one-line edit. Add yours under "Add your own feeds below".
-# Note: many CTI sites 403 a non-browser client — ingest fetches with a browser UA.
-# A few (e.g. Security Boulevard) hard-block datacenter IPs regardless of UA.
+# Note: feeds need the routine environment's network Access level = `Full` (or
+# `Custom` + feed domains); under the default `Trusted` level the egress proxy
+# 403s every feed domain (see /actioner:setup).
 
 feeds:
-  # — Vendor / primary research —
   - name: Unit42
     type: url
     url: https://unit42.paloaltonetworks.com/feed/
@@ -25,8 +28,6 @@ feeds:
   - name: Microsoft Security Blog
     type: url
     url: https://www.microsoft.com/en-us/security/blog/feed/
-
-  # — News / aggregators —
   - name: BleepingComputer
     type: url
     url: https://www.bleepingcomputer.com/feed/
@@ -79,8 +80,8 @@ feeds:
     type: url
     url: https://www.reddit.com/r/cybersecurity/.rss
 
-  # Add your own feeds below
-  #
+# Your feeds — add them here. Fetched alongside the defaults above.
+custom_feeds:
   # Public feed:
   # - name: My Vendor Blog
   #   type: url
