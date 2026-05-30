@@ -24,18 +24,9 @@ feeds:
 
 ## Step 2 — Fetch each feed
 
-- **`type: url`** — fetch the RSS/Atom XML. Cloud routines run from a **datacenter IP**, and most CTI feeds sit behind a CDN/WAF (Cloudflare, etc.) that **403s non-browser clients** — so a default `web_fetch` gets blocked by all but the most lenient sources. Fetch with a **browser User-Agent and RSS Accept headers** instead:
-
-  ```bash
-  curl -sSL --compressed --max-time 30 \
-    -A 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36' \
-    -H 'Accept: application/rss+xml, application/atom+xml, application/xml;q=0.9, */*;q=0.8' \
-    "$URL"
-  ```
-
-  If `curl` still returns 403/empty (a hard CDN/IP block that a UA can't pass), fall back to **web_fetch**. Parse each entry: title, canonical URL, snippet (`<description>`/`<summary>`), published date, source name.
+- **`type: url`** — fetch the RSS/Atom XML with **web_fetch**, and parse each entry: title, canonical URL, snippet (`<description>`/`<summary>`), published date, source name. **Requires the routine environment's network Access level to be `Full` (or `Custom` + feed domains)** — under the default `Trusted` level the egress proxy 403s feed domains and you'll reach almost nothing (see `/actioner:setup`).
 - **`type: repo`** — read the intel files from the connected repo at `repo`/`path` (the routine pulls them via the GitHub connector). Treat each as a source item with the same fields.
-- **Errors:** if a feed fails on **both** curl and web_fetch (timeout, 403, 404, malformed XML), log `[WARN] Failed to fetch: {name} ({url}) — {error}` and skip it. One dead feed never blocks the run — but **count reachable vs total feeds** and surface it in the digest (Step 6) so coverage gaps aren't silent.
+- **Errors:** if a feed fails (timeout, 403, 404, malformed XML), log `[WARN] Failed to fetch: {name} ({url}) — {error}` and skip it. One dead feed never blocks the run — but **count reachable vs total feeds and surface it in the digest** (Step 6) so coverage gaps aren't silent. If reachability is near-zero, that's the `Trusted`-egress signature, not the feeds — fix the environment Access level.
 
 ## Step 3 — Filter obvious noise
 

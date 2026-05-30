@@ -2,9 +2,11 @@
 
 Paste this as the prompt for a once-daily Claude Code Routine. The routine clones two repos at runtime: your **detections sink** (a GitHub repo you connect, where rules + digests are committed and deduplicated across days) and the **public Actioner toolkit repo** (where the pipeline's instructions live). It runs the **full pipeline**: scan feeds → triage → for each qualifying item, research the threat, generate + validate + critic-gate detections, and commit them. You review the committed detections and digest afterward.
 
-> ## Before you schedule — one prerequisite
+> ## Before you schedule — two prerequisites
 >
-> **GitHub access is via the Claude GitHub *App*, not the chat connector.** The cloud routine clones and pushes the **sink repo** using the [Claude GitHub App](https://github.com/apps/claude/installations/select_target) — installing the claude.ai GitHub *connector* is not enough. Your sink repo **(private is fully supported)** must be in the App's **Repository access** list with **read & write**. If it isn't scoped in, the run aborts with `github_repo_access_denied`. Commits/PRs are authored through the App's identity (co-attributed to you), not your personal account directly. *(The toolkit repo is public, so it needs no scoping.)*
+> **1. ⚠️ Set the environment's network Access level to `Full` (or `Custom` + feed domains).** The #1 silent failure. A routine's environment defaults to **`Trusted`** = allowlisted domains only (package registries, GitHub, cloud SDKs), so the egress proxy **403s every CTI feed** — triage sees ~1 feed and the run looks fine on almost no data. No UA/TLS/proxy trick fixes an egress allowlist. Set it in the **environment editor** (not the routine form): `Full` (any domain) or `Custom` (defaults + your feed domains). Miss it and the digest's coverage line reads near-zero — the `Trusted`-egress signature.
+>
+> **2. GitHub access is via the Claude GitHub *App*, not the chat connector.** The cloud routine clones and pushes the **sink repo** using the [Claude GitHub App](https://github.com/apps/claude/installations/select_target) — installing the claude.ai GitHub *connector* is not enough. Your sink repo **(private is fully supported)** must be in the App's **Repository access** list with **read & write**. If it isn't scoped in, the run aborts with `github_repo_access_denied`. Commits/PRs are authored through the App's identity (co-attributed to you), not your personal account directly. *(The toolkit repo is public, so it needs no scoping.)*
 >
 > **Always do a manual test run and read the first `digests/` entry before trusting the daily schedule.** Note too that the cron is fixed UTC — `0 10 * * *` is 6 AM EDT but 5 AM after the November EST switch.
 
@@ -45,7 +47,7 @@ Verify `sigma list targets` shows `splunk` + `log_scale` (CrowdStrike LogScale),
 
 ## Step 2 — Triage feeds (ingest)
 
-Follow `/tmp/actioner/skills/ingest/SKILL.md`: read `/tmp/actioner/feeds.yaml`, fetch every feed (public via web_fetch; `type: repo` from the connected repo), filter noise, apply the **decision criteria** below, and deduplicate against `digests/` and `summaries/` in the sink repo. Result: the **qualifying set**.
+Follow `/tmp/actioner/skills/ingest/SKILL.md`: read `/tmp/actioner/feeds.yaml`, fetch each feed's RSS/Atom via **web_fetch** (this needs the environment's network Access level set to `Full` — see prerequisites; under `Trusted` most feeds 403), filter noise, apply the **decision criteria** below, and deduplicate against `digests/` and `summaries/` in the sink repo — those are **dedup history only, never a topic source**; topics come only from freshly-fetched feed items. Report feed coverage (reachable/total) in the digest. Result: the **qualifying set**.
 
 ## Step 3 — Research + gate each qualifying item
 
