@@ -1,6 +1,6 @@
 ---
 name: rule-gen
-description: "Generate and validate detection rules (Sigma, YARA, Snort, Suricata) from a threat analysis. Default altitude is PoC/advisory-specific (key on the concrete artifacts the source gives); the behavioral TTP layer is opt-in. Validates each rule by compiling it (sigma check, yarac, snort -T, suricata -T) AND proving portability via sigma convert to Splunk and CrowdStrike; retries ≤3; labels each rule with a two-axis status (compile-status × confidence). Skips generation entirely for generic advisories with no concrete artifacts. Use after IOCs and TTPs have been extracted."
+description: "Generate and validate detection rules (Sigma, YARA, Snort, Suricata) from a threat analysis. Default altitude is PoC/advisory-specific; behavioral TTP layer is opt-in. Compiles each rule (sigma check, yarac, snort -T, suricata -T) and proves Splunk/CrowdStrike portability via sigma convert, retries ≤3, labels it compile-status × confidence. Skips generic advisories with no concrete artifacts. Use after IOCs and TTPs are extracted."
 ---
 
 # Skill: Rule Generator

@@ -1,22 +1,36 @@
 # Actioner — Daily Autonomous Pipeline (routine prompt)
 
-Paste this as the prompt for a once-daily Claude Code Routine. Connect a GitHub repo (the routine clones it) so detections and digests are committed and deduplicated across days. The routine runs the **full pipeline**: scan feeds → triage → for each qualifying item, research the threat, generate + validate + critic-gate detections, and commit them. You review the committed detections and digest afterward.
+Paste this as the prompt for a once-daily Claude Code Routine. The routine clones two repos at runtime: your **detections sink** (a GitHub repo you connect, where rules + digests are committed and deduplicated across days) and the **public Actioner toolkit repo** (where the pipeline's instructions live). It runs the **full pipeline**: scan feeds → triage → for each qualifying item, research the threat, generate + validate + critic-gate detections, and commit them. You review the committed detections and digest afterward.
 
-> ## Before you schedule — two prerequisites (skip these and the run fails at launch)
+> ## Before you schedule — one prerequisite
 >
-> **1. GitHub access is via the Claude GitHub *App*, not the chat connector.** The cloud routine clones and pushes using the [Claude GitHub App](https://github.com/apps/claude/installations/select_target) — installing the claude.ai GitHub *connector* is not enough. Your target repo **(private is fully supported)** must be in the App's **Repository access** list with **read & write**. If it isn't scoped in, the run aborts with `github_repo_access_denied`. Commits/PRs are authored through the App's identity (co-attributed to you), not your personal account directly.
->
-> **2. The Actioner plugin must be reachable in the cloud session.** This prompt calls the `ingest` skill and the `researcher`/`critic` subagents. A fresh cloud session has only the cloned `sources` repo(s) plus the plugins you *declare on the routine* — it does **not** inherit your local plugins, and **a plain sink repo does not carry the plugin.** Publish the plugin to a git-hosted marketplace (push the dir whose root holds `.claude-plugin/marketplace.json` — public is simplest, no App scoping needed), then set the routine's `extra_marketplaces` (array of `{"name", "source": {"git_repository": {"url"}}}` objects) and `enabled_plugins` (`["actioner@actioner"]`). `get`-verify the fields persisted — the API silently drops an unresolvable marketplace. Step 0 below stops cleanly if the plugin is still absent.
+> **GitHub access is via the Claude GitHub *App*, not the chat connector.** The cloud routine clones and pushes the **sink repo** using the [Claude GitHub App](https://github.com/apps/claude/installations/select_target) — installing the claude.ai GitHub *connector* is not enough. Your sink repo **(private is fully supported)** must be in the App's **Repository access** list with **read & write**. If it isn't scoped in, the run aborts with `github_repo_access_denied`. Commits/PRs are authored through the App's identity (co-attributed to you), not your personal account directly. *(The toolkit repo is public, so it needs no scoping.)*
 >
 > **Always do a manual test run and read the first `digests/` entry before trusting the daily schedule.** Note too that the cron is fixed UTC — `0 10 * * *` is 6 AM EDT but 5 AM after the November EST switch.
 
 ---
 
-## Step 0 — Precondition check
+## Step 0 — Bootstrap the toolkit (clone the public Actioner repo)
 
-This pipeline depends on the Actioner plugin's `ingest` skill and the `researcher`/`critic` subagents. If those are **not** available in this session, STOP: write a `digests/YYYY-MM-DD.md` note saying the Actioner plugin is not present in the cloud environment and the run cannot proceed, commit it, and exit. **Do not improvise the pipeline** — a faked run is worse than a skipped one.
+The pipeline's logic lives in instruction files, not in a pre-installed plugin. Fetch them first:
 
-## Step 1 — Install the toolchain (inline)
+```bash
+git clone --depth 1 https://github.com/ThomasPark20/Actioner /tmp/actioner
+```
+
+You will execute the pipeline by **reading and following the instruction files** under `/tmp/actioner` — you do **not** need the Actioner plugin registered as a Claude Code component. Treat `/tmp/actioner` as the read-only toolkit root; any relative paths inside those files (e.g. `templates/`) resolve against it. Key files:
+
+- **Feeds:** `/tmp/actioner/feeds.yaml`
+- **Triage instructions:** `/tmp/actioner/skills/ingest/SKILL.md`
+- **Research / IOC / rule-gen instructions:** `/tmp/actioner/skills/research/SKILL.md`, `.../ioc-extract/SKILL.md`, `.../rule-gen/SKILL.md`
+- **Templates:** `/tmp/actioner/templates/`
+- **The `researcher` and `critic` roles:** `/tmp/actioner/agents/researcher.md` and `/tmp/actioner/agents/critic.md`. Run **each as a separate `Task` (general-purpose) subagent**, passing that file's full body as the subagent's operating instructions. This preserves the isolated-context draft→critic→revise separation the pipeline depends on (the orchestrator must not collapse all three into one context).
+
+**The detections SINK is the routine's cloned `sources` repo (the working directory), NOT `/tmp/actioner`.** All commits — `rules/`, `summaries/`, `digests/` — go to the sink repo.
+
+If the clone fails (network/repo issue), STOP: write `digests/YYYY-MM-DD.md` in the sink repo noting the toolkit could not be fetched, commit it, and exit. **Do not improvise the pipeline** — a faked run is worse than a skipped one.
+
+## Step 1 — Install the validation toolchain (inline)
 
 So cloud rule generation compile-checks and converts for real (cloud egress allows package managers):
 
@@ -31,20 +45,20 @@ Verify `sigma list targets` shows `splunk` + `log_scale` (CrowdStrike LogScale),
 
 ## Step 2 — Triage feeds (ingest)
 
-Use the `ingest` skill: read `feeds.yaml`, fetch every feed (public via web_fetch; `type: repo` from the connected repo), filter noise, apply the **decision criteria** below, and deduplicate against `digests/` and `summaries/` in the repo. Result: the **qualifying set**.
+Follow `/tmp/actioner/skills/ingest/SKILL.md`: read `/tmp/actioner/feeds.yaml`, fetch every feed (public via web_fetch; `type: repo` from the connected repo), filter noise, apply the **decision criteria** below, and deduplicate against `digests/` and `summaries/` in the sink repo. Result: the **qualifying set**.
 
 ## Step 3 — Research + gate each qualifying item
 
-You are the orchestrator (subagents can't nest). For each item in the qualifying set, run the full chain:
+You are the orchestrator (subagents can't nest). For each item in the qualifying set, run the full chain — each role as its own `Task` subagent seeded with the corresponding `agents/*.md` body:
 
-1. **`researcher` (DRAFT):** investigate, run the viability gate, generate **PoC/advisory-specific** detections (default altitude), validate (compile + Splunk/CrowdStrike convert). Output location = this repo.
-2. **`critic`:** production-readiness gate — per-rule confidence + keep/fix/drop.
-3. **`researcher` (REVISE):** apply the verdict, re-validate changed rules, finalize. The repo is a sink, so write standalone rule files (`rules/{sigma,yara,snort,suricata}/<slug>.*`) **and** the summary (`summaries/<slug>.md`).
+1. **`researcher` (DRAFT)** — seed with `/tmp/actioner/agents/researcher.md`: investigate, run the viability gate, generate **PoC/advisory-specific** detections (default altitude), validate (compile + Splunk/CrowdStrike convert). Output location = the sink repo.
+2. **`critic`** — seed with `/tmp/actioner/agents/critic.md`: production-readiness gate — per-rule confidence + keep/fix/drop.
+3. **`researcher` (REVISE)** — apply the verdict, re-validate changed rules, finalize. Write standalone rule files (`rules/{sigma,yara,snort,suricata}/<slug>.*`) **and** the summary (`summaries/<slug>.md`) into the sink repo.
 4. **Commit** the report + rule files. If the viability gate found no production-ready detection, record that one-liner in the summary and move on — don't commit an empty or broad rule.
 
 ## Step 4 — Commit the digest
 
-Write `digests/YYYY-MM-DD.md` and commit it:
+Write `digests/YYYY-MM-DD.md` in the sink repo and commit it:
 
 ```markdown
 # Actioner Daily — YYYY-MM-DD

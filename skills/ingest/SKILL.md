@@ -1,6 +1,6 @@
 ---
 name: ingest
-description: "Triage stage of Actioner's autonomous pipeline. Pull configured CTI feeds and return the set of items that warrant a detection, judged against editable decision criteria — fetch, filter noise, apply the criteria, deduplicate. Used by the daily routine, which then runs research → critic → commit on each qualifying item. Also emits a digest of what it surfaced."
+description: "Triage stage of Actioner's autonomous pipeline: pull configured CTI feeds, filter noise, apply editable decision criteria, deduplicate, and return the items that warrant a detection (plus a digest). Used by the daily routine before research → critic → commit."
 ---
 
 # Actioner — Feed Triage (Ingest)

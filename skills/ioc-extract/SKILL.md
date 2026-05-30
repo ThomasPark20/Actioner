@@ -1,6 +1,6 @@
 ---
 name: ioc-extract
-description: "Extract, normalize, and defang indicators of compromise (IPs, domains, URLs, hashes, file paths, registry keys) from source text, and extract TTPs mapped to MITRE ATT&CK. Use when processing an article, report, or technical writeup into structured indicators before building a detection report. Bridges research and rule generation."
+description: "Extract, normalize, and defang IOCs (IPs, domains, URLs, hashes, file paths, registry keys) and TTPs mapped to MITRE ATT&CK from source text. Use when turning an article, report, or writeup into structured indicators before rule generation."
 ---
 
 # Skill: IOC Extract

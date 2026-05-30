@@ -1,6 +1,6 @@
 ---
 name: research
-description: "On-demand CTI research and detection engineering. Use when the user asks to research a threat, campaign, threat actor, CVE, or malware family, or to turn an article/URL into detection rules — e.g. 'research the latest Volt Typhoon activity', '/actioner:research CVE-2026-1234', 'ingest this writeup and give me Sigma rules'. Investigates the topic, extracts IOCs and ATT&CK TTPs, generates PoC/advisory-specific (default) detections that convert cleanly to Splunk/CrowdStrike, and runs them through a critic gate before delivering a technical analysis report."
+description: "On-demand CTI research and detection engineering. Use to research a threat, campaign, threat actor, CVE, or malware family, or turn an article/URL into rules — e.g. 'research the latest Volt Typhoon activity', '/actioner:research CVE-2026-1234', 'turn this writeup into Sigma rules'. Extracts IOCs and ATT&CK TTPs, generates PoC/advisory-specific detections (Splunk/CrowdStrike-portable), critic-gated, and delivers a technical analysis report."
 ---
 
 # Actioner — On-Demand Research
