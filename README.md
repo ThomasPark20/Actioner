@@ -42,7 +42,9 @@ That's it to start researchin'
 
 Below is semi-ai generated. Read if you want.
 
-Two methods of execution. **On demand** (out of the box): `/actioner:research <threat>` chases primary sources, extracts IOCs and ATT&CK TTPs, generates Sigma/YARA/Snort/Suricata, **syntactically verifies every rule by compiling it** (sigma-cli, yarac, snort -T, suricata -T) and converting Sigma to Splunk/CrowdStrike, then runs the survivors through a critic gate before delivering a technical report (real compilation once you've run `/actioner:setup`; before that, an honest structural check labeled ⚠️ uncompiled). Detections are **PoC/advisory-specific by default** — keyed on the artifact the source gives — with an **opt-in behavioral TTP layer**, and written to **convert cleanly to Splunk and CrowdStrike**.
+Two methods of execution. 
+
+**On demand** (out of the box): `/actioner:research <threat>` chases primary sources, extracts IOCs and ATT&CK TTPs, generates Sigma/YARA/Snort/Suricata, **syntactically verifies every rule by compiling it** (sigma-cli, yarac, snort -T, suricata -T) and converting Sigma to Splunk/CrowdStrike, then runs the survivors through a critic gate before delivering a technical report (real compilation once you've run `/actioner:setup`; before that, an honest structural check labeled ⚠️ uncompiled). Detections are **PoC/advisory-specific by default** — keyed on the artifact the source gives — with an **opt-in behavioral TTP layer**, and written to **convert cleanly to Splunk and CrowdStrike**.
 
 **Autonomous** (after `/actioner:setup`): a once-daily routine scans your CTI feeds, triages what warrants a near-term detection, and runs the full pipeline on each qualifying item — research → generate → validate → commit — into a connected GitHub repo, hands-off.
 
