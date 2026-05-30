@@ -24,9 +24,18 @@ feeds:
 
 ## Step 2 — Fetch each feed
 
-- **`type: url`** — fetch the RSS/Atom XML with **web_fetch** (NOT a raw HTTP client). In a routine's cloud environment, container egress is allowlist-restricted, but web_fetch reaches the public web — so a public feed is a pure config edit with no allowlist management. Parse each entry: title, canonical URL, snippet (`<description>`/`<summary>`), published date, source name.
+- **`type: url`** — fetch the RSS/Atom XML. Cloud routines run from a **datacenter IP**, and most CTI feeds sit behind a CDN/WAF (Cloudflare, etc.) that **403s non-browser clients** — so a default `web_fetch` gets blocked by all but the most lenient sources. Fetch with a **browser User-Agent and RSS Accept headers** instead:
+
+  ```bash
+  curl -sSL --compressed --max-time 30 \
+    -A 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36' \
+    -H 'Accept: application/rss+xml, application/atom+xml, application/xml;q=0.9, */*;q=0.8' \
+    "$URL"
+  ```
+
+  If `curl` still returns 403/empty (a hard CDN/IP block that a UA can't pass), fall back to **web_fetch**. Parse each entry: title, canonical URL, snippet (`<description>`/`<summary>`), published date, source name.
 - **`type: repo`** — read the intel files from the connected repo at `repo`/`path` (the routine pulls them via the GitHub connector). Treat each as a source item with the same fields.
-- **Errors:** if a feed fails (timeout, 404, malformed XML), log `[WARN] Failed to fetch: {name} ({url}) — {error}` and skip it. One dead feed never blocks the run.
+- **Errors:** if a feed fails on **both** curl and web_fetch (timeout, 403, 404, malformed XML), log `[WARN] Failed to fetch: {name} ({url}) — {error}` and skip it. One dead feed never blocks the run — but **count reachable vs total feeds** and surface it in the digest (Step 6) so coverage gaps aren't silent.
 
 ## Step 3 — Filter obvious noise
 
@@ -38,10 +47,13 @@ Evaluate each surviving item against the **decision criteria** supplied by the r
 
 ## Step 5 — Deduplicate
 
-Avoid re-processing what was already handled. If history is persisted in the connected repo, grep `digests/` **and** `summaries/` for each item's URL/topic and skip ones already surfaced or already researched. Within a single run, dedup by URL and collapse the same story reported by multiple outlets into one entry (keep the most primary/technical source, list the others as additional coverage).
+Avoid re-processing what was already handled. If history is persisted in the connected repo, grep `digests/` **and** `summaries/` for each item's URL/topic and skip ones already surfaced or already researched. Within a single run, dedup in two passes:
+
+1. **Exact:** collapse identical URLs.
+2. **Story-level (important — the feed list is mostly overlapping general-news outlets, so the same event appears 5+ times):** cluster items that refer to the **same underlying event** — keyed on a shared CVE ID, malware/campaign name, compromised package (`name@version`), threat actor, or victim org — into **one** entry. Keep the most **primary/technical** source (vendor research > original reporter > aggregator/rewrite) as the canonical link and list the rest as additional coverage. Research runs **once per cluster**, not once per outlet — this is the main cost control now that there are many redundant feeds.
 
 ## Step 6 — Output: the qualifying set + a digest
 
 Return the **qualifying set** — the items that should go to research — each with: source, title, canonical URL, snippet, published date, and the one-clause match reason. Order most-urgent first. This is what the routine iterates over (research → critic → commit).
 
-Also produce a dated **digest** recording what was surfaced (the same items, as a table with a clickable `[Read](url)` link each). If nothing meets the criteria, the qualifying set is empty and the digest is a one-line "no qualifying items today" — a valid, useful result, not a failure.
+Also produce a dated **digest** recording what was surfaced (the same items, as a table with a clickable `[Read](url)` link each). **State feed coverage** — e.g. "scanned 11 feeds, 9 reachable" — and name any that failed, so a run that only reached one source is visibly degraded rather than looking complete. If nothing meets the criteria, the qualifying set is empty and the digest is a one-line "no qualifying items today" — a valid, useful result, not a failure.

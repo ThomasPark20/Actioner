@@ -1,24 +1,18 @@
 # Actioner feed sources.
 # Each entry: name, type (url | repo; default url), and a url OR repo+path.
 #
-#   type: url   — public RSS/Atom feed, fetched via web_fetch (no allowlist needed)
+#   type: url   — public RSS/Atom feed, fetched with a browser User-Agent (see skills/ingest)
 #   type: repo  — private/internal intel pulled from a connected GitHub repo
 #
 # Public feeds are a one-line edit. Add yours under "Add your own feeds below".
+# Note: many CTI sites 403 a non-browser client — ingest fetches with a browser UA.
+# A few (e.g. Security Boulevard) hard-block datacenter IPs regardless of UA.
 
 feeds:
-  - name: BleepingComputer
-    type: url
-    url: https://www.bleepingcomputer.com/feed/
-  - name: The Record
-    type: url
-    url: https://therecord.media/feed
+  # — Vendor / primary research —
   - name: Unit42
     type: url
     url: https://unit42.paloaltonetworks.com/feed/
-  - name: Krebs on Security
-    type: url
-    url: https://krebsonsecurity.com/feed/
   - name: The DFIR Report
     type: url
     url: https://thedfirreport.com/feed/
@@ -31,12 +25,56 @@ feeds:
   - name: Microsoft Security Blog
     type: url
     url: https://www.microsoft.com/en-us/security/blog/feed/
-  - name: Google TAG
+
+  # — News / aggregators —
+  - name: BleepingComputer
     type: url
-    url: https://blog.google/threat-analysis-group/rss/
-  - name: Elastic Security Labs
+    url: https://www.bleepingcomputer.com/feed/
+  - name: The Record
     type: url
-    url: https://www.elastic.co/security-labs/rss/feed
+    url: https://therecord.media/feed
+  - name: Krebs on Security
+    type: url
+    url: https://krebsonsecurity.com/feed/
+  - name: The Hacker News
+    type: url
+    url: https://feeds.feedburner.com/TheHackersNews
+  - name: CyberScoop
+    type: url
+    url: https://cyberscoop.com/feed
+  - name: Cyber Security News
+    type: url
+    url: https://cybersecuritynews.com/feed/
+  - name: GBHackers
+    type: url
+    url: https://gbhackers.com/feed/
+  - name: Hackread
+    type: url
+    url: https://hackread.com/feed/
+  - name: Security Affairs
+    type: url
+    url: https://securityaffairs.com/feed
+  - name: Security Online
+    type: url
+    url: https://securityonline.info/feed/
+  - name: Infosecurity Magazine
+    type: url
+    url: https://www.infosecurity-magazine.com/rss/news/
+  - name: SC Media
+    type: url
+    url: https://www.scmagazine.com/rss
+  - name: SecurityWeek
+    type: url
+    url: https://www.securityweek.com/feed/
+  - name: The Register (Security)
+    type: url
+    url: https://www.theregister.com/security/headlines.atom
+  - name: Darknet
+    type: url
+    url: https://darknet.org.uk/feed/
+  - name: Threatpost
+    type: url
+    url: https://threatpost.com/feed/
   - name: Reddit Cybersecurity
     type: url
     url: https://www.reddit.com/r/cybersecurity/.rss
