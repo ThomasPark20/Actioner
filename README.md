@@ -18,7 +18,7 @@
 
 This plugin gives your claude 2 abilities.
 
-1. Do actionable threat intel reserach and output an artifact that could immediately be tested in prod. By default it is more PoC/advisory centric so if you want a more generic TTP detection make sure you modfiy settings. The rules aren't bs. At the minimum it is syntatically valid.
+1. Do actionable threat intel research and output an artifact that could immediately be tested in prod. By default it is more PoC/advisory centric so if you want a more generic TTP detection make sure you modify the settings. The rules aren't bs. At the minimum it is syntactically valid.
 2. Automatic daily routine based OSINT -> artifact pipeline. checkout the sources, add yours too — [feeds.yaml](feeds.yaml).
 
 ### [One look is better than a thousand AI generated architecture explanations and methodologies](https://github.com/ThomasPark20/Actioner-examples)
