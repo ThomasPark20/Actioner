@@ -1,0 +1,17 @@
+{
+  "name": "actioner",
+  "owner": {
+    "name": "Thomas Park"
+  },
+  "metadata": {
+    "description": "Actioner — threat-intelligence detection engineering for Claude Code.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "actioner",
+      "source": "./",
+      "description": "On-demand: research a threat and generate Sigma/YARA/Snort/Suricata rules (PoC/advisory-specific default, opt-in TTP; labeled compile-status × confidence; Splunk/CrowdStrike-portable; critic-gated). Autonomous: a daily routine researches qualifying feed items and commits detections."
+    }
+  ]
+}

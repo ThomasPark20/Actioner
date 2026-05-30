@@ -1,0 +1,19 @@
+{
+  "name": "actioner",
+  "description": "Threat-intelligence detection engineering in Claude Code. On-demand: research a threat and generate Sigma/YARA/Snort/Suricata rules (PoC/advisory-specific by default, opt-in behavioral TTP), each labeled compile-status × confidence and written to convert to Splunk/CrowdStrike, gated by a critic before delivery. Autonomous: a daily routine scans your CTI feeds and auto-generates committed detections for items that warrant one.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Thomas Park"
+  },
+  "homepage": "https://thomaspark20.github.io/Actioner",
+  "repository": "https://github.com/ThomasPark20/Actioner",
+  "license": "MIT",
+  "keywords": [
+    "threat-intelligence",
+    "detection-engineering",
+    "sigma",
+    "yara",
+    "cti",
+    "security"
+  ]
+}
