@@ -1,0 +1,55 @@
+# Actioner feed sources.
+# Each entry: name, type (url | repo; default url), and a url OR repo+path.
+#
+#   type: url   — public RSS/Atom feed, fetched via web_fetch (no allowlist needed)
+#   type: repo  — private/internal intel pulled from a connected GitHub repo
+#
+# Public feeds are a one-line edit. Add yours under "Add your own feeds below".
+
+feeds:
+  - name: BleepingComputer
+    type: url
+    url: https://www.bleepingcomputer.com/feed/
+  - name: The Record
+    type: url
+    url: https://therecord.media/feed
+  - name: Unit42
+    type: url
+    url: https://unit42.paloaltonetworks.com/feed/
+  - name: Krebs on Security
+    type: url
+    url: https://krebsonsecurity.com/feed/
+  - name: The DFIR Report
+    type: url
+    url: https://thedfirreport.com/feed/
+  - name: SentinelOne Labs
+    type: url
+    url: https://www.sentinelone.com/labs/feed/
+  - name: Cisco Talos
+    type: url
+    url: https://blog.talosintelligence.com/rss/
+  - name: Microsoft Security Blog
+    type: url
+    url: https://www.microsoft.com/en-us/security/blog/feed/
+  - name: Google TAG
+    type: url
+    url: https://blog.google/threat-analysis-group/rss/
+  - name: Elastic Security Labs
+    type: url
+    url: https://www.elastic.co/security-labs/rss/feed
+  - name: Reddit Cybersecurity
+    type: url
+    url: https://www.reddit.com/r/cybersecurity/.rss
+
+  # Add your own feeds below
+  #
+  # Public feed:
+  # - name: My Vendor Blog
+  #   type: url
+  #   url: https://example.com/feed.xml
+  #
+  # Private/internal intel (pulled from a connected repo — see /actioner:setup):
+  # - name: Internal CTI
+  #   type: repo
+  #   repo: myorg/internal-intel
+  #   path: feeds/
