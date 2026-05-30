@@ -72,7 +72,19 @@ A once-a-day **full pipeline**, serverless on Anthropic's cloud — no laptop re
 
 > **Two prerequisites before scheduling — verify these first, or the run fails at launch:**
 > - **GitHub App scoped to the repo.** See "Save to GitHub" above. The routine clones/pushes via the **Claude GitHub App** (not the chat connector); the target repo — private is fine — must be in the App's repo-access list with read & write. Missing this is the `github_repo_access_denied` error.
-> - **The Actioner plugin must be reachable in the cloud session.** The routine prompt calls the `ingest` skill and the `researcher`/`critic` subagents. A fresh cloud session has only the cloned repo and zero other context — **a plain sink repo does not carry the plugin.** Make the plugin available (e.g. install it from the marketplace the routine loads, or commit/vendor it into the cloned repo), or the run can't execute the pipeline. The shipped prompt includes a precondition check that **stops and writes a `digests/` note** if the plugin is absent, rather than faking the pipeline. **Always do a manual test run (`/schedule` → run now, or the routine's "Run" button) and check the first digest before trusting the schedule.**
+> - **The Actioner plugin must be reachable in the cloud session.** The routine prompt calls the `ingest` skill and the `researcher`/`critic` subagents. A fresh cloud session has only the cloned `sources` repo(s) and the plugins you *explicitly declare on the routine* — it does **not** inherit your locally-installed plugins, and **a plain sink repo does not carry the plugin.** The cloud routine config exposes two fields for this: `extra_marketplaces` and `enabled_plugins` (both empty by default — empty means zero plugins in the session). The launch path:
+>   1. **Publish the plugin to a git-hosted marketplace.** Push the directory whose root holds `.claude-plugin/marketplace.json` (push that dir's *contents*, not its parent) to a repo, e.g. `github.com/<owner>/Actioner`. **Public is simplest — a public marketplace needs no GitHub App scoping;** a private one must be scoped into the App like the sink.
+>   2. **Wire the routine** via the trigger config (RemoteTrigger `update`). The field shapes are fiddly — `extra_marketplaces` is an array of **objects**, not strings:
+>      ```json
+>      {
+>        "extra_marketplaces": [
+>          {"name": "actioner", "source": {"git_repository": {"url": "https://github.com/<owner>/Actioner"}}}
+>        ],
+>        "enabled_plugins": ["actioner@actioner"]
+>      }
+>      ```
+>      `enabled_plugins` entries are `plugin-name@marketplace-name` (both `actioner` here). **Verify it stuck with a `get`** — the API accepts the update (200) but silently drops the marketplace (echoes empty arrays) if the repo isn't resolvable/public yet. So publish *first*, then wire, then `get`-confirm.
+>   - The shipped prompt includes a Step 0 precondition check that **stops and writes a `digests/` note** if the plugin is absent, rather than faking the pipeline. **Always do a manual test run (`/schedule` → run now, or the routine's "Run" button) and check the first digest before trusting the schedule.**
 
 1. Open claude.ai/code routines (or `/schedule` in the CLI) and create a daily routine.
 2. Use the prompt at `${CLAUDE_PLUGIN_ROOT}/routine/actioner-daily.md`. The remote session starts cold, so **embed the prompt's full text inline** — don't reference the file path (the cloud agent can't read your local disk). Point out the **editable decision-criteria block** — that's what the user tunes to control what gets acted on (default: new vulns with active exploitation / public PoC, and supply-chain attacks).
