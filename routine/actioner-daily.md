@@ -32,6 +32,24 @@ You will execute the pipeline by **reading and following the instruction files**
 
 If the clone fails (network/repo issue), STOP: write `digests/YYYY-MM-DD.md` in the sink repo noting the toolkit could not be fetched, commit it, and exit. **Do not improvise the pipeline** — a faked run is worse than a skipped one.
 
+## Step 0.5 — Preflight the write path (fail fast, before any expensive work)
+
+The push to the sink is the **only** step that can't be retried into success and that the entire run is staked on — so prove it works *now*, not after a full research pass. Note: the sink push goes through a **separate git-auth proxy, independent of the network Access level** — "feeds reached" says nothing about whether push works. And Routines restrict pushes to **`claude/`-prefixed branches** by default. So work on such a branch and test the push immediately, in the sink repo (the working directory):
+
+```bash
+git config user.name "actioner"; git config user.email "actioner@actioner.invalid"  # .invalid TLD never maps to a real GitHub account — keeps a stranger off your contributors list
+git checkout -b claude/actioner-$(date -u +%F) 2>/dev/null || git checkout claude/actioner-$(date -u +%F)
+git commit --allow-empty -m "actioner: preflight $(date -u +%F)" -q
+git push -u origin HEAD 2>&1 | tee /tmp/push-preflight.log   # MUST succeed
+```
+
+If the push fails, **STOP — do not run the pipeline** (don't burn the run's budget on artifacts that can't be persisted). Diagnose from the error / `x-deny-reason` header and, on any branch you *can* push, leave a `digests/` note with the cause + fix:
+- **branch denied** → enable **"Allow unrestricted branch pushes"** on the routine, or stay on the `claude/` branch + PR (the default flow here).
+- **401/403 / scope** → the connected account lacks **write** on the sink (authorize the GitHub App on it), or lacks **`workflow`** scope if anything is written under `.github/`.
+- **5xx on the git-auth proxy** → genuine infra; check status.claude.com and re-run later (this one *can* recover by waiting; the others can't).
+
+All subsequent commits go on this `claude/…` branch.
+
 ## Step 1 — Install the validation toolchain (inline)
 
 So cloud rule generation compile-checks and converts for real (cloud egress allows package managers):
@@ -74,6 +92,18 @@ Write `digests/YYYY-MM-DD.md` in the sink repo and commit it:
 ```
 
 If nothing qualified, commit a one-line `No qualifying items today. F feeds scanned.`
+
+## Step 4.5 — Push the branch and open a PR
+
+All commits are on the `claude/actioner-<date>` branch from Step 0.5. Push it and open a PR to the default branch — this is the platform-native flow (the write path the proxy is built around); **do not push to `master`/`main` directly** unless the routine has "Allow unrestricted branch pushes" on.
+
+```bash
+git push origin HEAD
+gh pr create --fill --base "$(git remote show origin | sed -n 's/.*HEAD branch: //p')" --head "$(git branch --show-current)" 2>&1 || \
+  echo "PR open failed — branch is pushed; open the PR manually or merge it."
+```
+
+The pushed branch + PR is the durable result the user reviews. (If `gh` isn't available, the pushed `claude/…` branch alone is enough — the user merges it.)
 
 ## Step 5 — Optional notification
 

@@ -64,7 +64,11 @@ Makes detections durable and doubles as the inbound path for private intel.
 2. Ask for the repo (`owner/name`) and confirm the layout: `rules/{sigma,yara,snort,suricata}/`, `summaries/`, `digests/`.
 3. Record it as the default output location (sink) for `/actioner:research` and the commit target for the daily routine. **When a sink is set, runs also write standalone rule files; with no sink, output stays in the working directory.**
 4. **"Commits as me" — set expectations.** The routine commits/opens PRs through the **GitHub App's** identity (token), co-attributed to you — it does **not** impersonate your personal account as if you pushed by hand. It *can* open PRs on a private repo once the App is scoped to it.
-5. **Private intel (advanced):** internal sources can't be reached from the cloud (no localhost/LAN route). Instead, commit intel files into a private repo (or an `intel/` path) and reference them in `feeds.yaml` with `type: repo`. Note honestly: this needs something on the user's side to populate that repo — it is not "just add a URL."
+5. **The push path is separate from feeds — and branch-restricted.** A routine's `git push` goes through a dedicated **git-auth proxy that is independent of the network Access level** (so "feeds worked" tells you nothing about whether push works — they're different proxies). Two consequences to set up for:
+   - **Pushes are restricted to `claude/`-prefixed branches by default.** The shipped routine works *with* this: it commits on a `claude/actioner-<date>` branch and opens a **PR** to the default branch (you review/merge). If you instead want direct commits to `master`/`main`, enable **"Allow unrestricted branch pushes"** on the routine.
+   - **Write scope:** the connected account/App needs **write** on the sink; if anything is ever written under `.github/` (e.g. workflows), it also needs the **`workflow`** scope, which the App-installation token may lack.
+   - The routine **preflights the write path in Step 0.5** (a throwaway push to the `claude/` branch) and aborts in seconds with the specific cause if it can't persist — so a misconfigured sink fails *before* a full research run, not after.
+6. **Private intel (advanced):** internal sources can't be reached from the cloud (no localhost/LAN route). Instead, commit intel files into a private repo (or an `intel/` path) and reference them in `feeds.yaml` with `type: repo`. Note honestly: this needs something on the user's side to populate that repo — it is not "just add a URL."
 
 ## Daily autonomy (routine)
 
